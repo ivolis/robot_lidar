@@ -1,3 +1,10 @@
+%  __      _______ _____ _____ _               _   _  _____ _____          
+%  \ \    / /_   _/ ____|_   _| |        /\   | \ | |/ ____|_   _|   /\    
+%   \ \  / /  | || |  __  | | | |       /  \  |  \| | |      | |    /  \   
+%    \ \/ /   | || | |_ | | | | |      / /\ \ | . ` | |      | |   / /\ \  
+%     \  /   _| || |__| |_| |_| |____ / ____ \| |\  | |____ _| |_ / ____ \ 
+%      \/   |_____\_____|_____|______/_/    \_\_| \_|\_____|_____/_/    \_\
+
 %% Robot diferencial con lidar
 % Robotica Movil - 2022 1c
 close all
@@ -7,6 +14,8 @@ verMatlab= ver('MATLAB');   % en MATLAB2020a funciona bien, ajustado para R2016b
 
 simular_ruido_lidar = false; %simula datos no validos del lidar real, probar si se la banca
 use_roomba=false;  % false para desarrollar usando el simulador, true para conectarse al robot real
+
+addpath('my_tools'); % cualquier funcion extra que haya hecho yo
 
 %% Roomba
 if use_roomba   % si se usa el robot real, se inicializa la conexion    
