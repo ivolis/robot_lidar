@@ -32,11 +32,11 @@ L = 0.235;                  % Distancia entre ruedas [m]
 dd = DifferentialDrive(R,L); % creacion del Simulador de robot diferencial
 
 %% Creacion del entorno
-load 2021_2c_tp_map.mat     %carga el mapa como occupancyMap en la variable 'map'
+load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
 
 if verMatlab.Release=='(R2016b)'
     %Para versiones anteriores de MATLAB, puede ser necesario ajustar mapa
-    imagen_mapa = 1-double(imread('imagen_2021_2c_mapa_tp.tiff'))/255;
+    imagen_mapa = 1-double(imread('mapa_2022_1c.tiff'))/255;
     map = robotics.OccupancyGrid(imagen_mapa, 25);
 elseif verMatlab.Release(1:5)=='(R201'    % Completar con la version que tengan
     %Ni idea que pasa, ver si el truco R2016b funciona

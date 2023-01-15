@@ -2,11 +2,19 @@
 % Robotica Movil - 2022 1c
 close all
 clear all
+clc
 
 verMatlab= ver('MATLAB');   % en MATLAB2020a funciona bien, ajustado para R2016b, los demas a pelearla...
 
 simular_ruido_lidar = false; %simula datos no validos del lidar real, probar si se la banca
 use_roomba=false;  % false para desarrollar usando el simulador, true para conectarse al robot real
+
+a = zeros(20,1)
+b = 1:20
+% a(b > 10)=10
+% a(b < 5)=10
+a(10 < b < 5) = 10
+
 
 %% Roomba
 if use_roomba   % si se usa el robot real, se inicializa la conexion    
@@ -32,11 +40,11 @@ L = 0.235;                  % Distancia entre ruedas [m]
 dd = DifferentialDrive(R,L); % creacion del Simulador de robot diferencial
 
 %% Creacion del entorno
-load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
+load 2021_2c_tp_map.mat     %carga el mapa como occupancyMap en la variable 'map'
 
 if verMatlab.Release=='(R2016b)'
     %Para versiones anteriores de MATLAB, puede ser necesario ajustar mapa
-    imagen_mapa = 1-double(imread('mapa_2022_1c.tiff'))/255;
+    imagen_mapa = 1-double(imread('imagen_2021_2c_mapa_tp.tiff'))/255;
     map = robotics.OccupancyGrid(imagen_mapa, 25);
 elseif verMatlab.Release(1:5)=='(R201'    % Completar con la version que tengan
     %Ni idea que pasa, ver si el truco R2016b funciona
@@ -63,7 +71,7 @@ attachLidarSensor(viz,lidar);
 
 %% Parametros de la Simulacion
 
-simulationDuration = 3*60;          % Duracion total [s]
+simulationDuration = 31.4159*2+5%3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
 initPose = [2; 2.5; -pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
@@ -71,11 +79,16 @@ initPose = [2; 2.5; -pi/2];         % Pose inicial (x y theta) del robot simulad
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
 
 %% generar comandos a modo de ejemplo
-vxRef = 0.05*ones(size(tVec));   % Velocidad lineal a ser comandada
-wRef = zeros(size(tVec));       % Velocidad angular a ser comandada
-wRef(tVec < 5) = -0.2;
-wRef(tVec >=7.5) = 0.2;
+% vxRef = 0.05*ones(size(tVec));   % Velocidad lineal a ser comandada
+% wRef = zeros(size(tVec));       % Velocidad angular a ser comandada
+% wRef(tVec < 5) = -0.2;
+% wRef(tVec >=7.5) = 0.2;
 
+vxRef = zeros(size(tVec));
+wRef = zeros(size(tVec));
+wRef(tVec < 31.4159) = -0.2;
+vxRef( 31.4159 <= tVec < 31.4159 + 5 ) = 0.05; 
+wRef(tVec >= (31.4159 + 5) ) = 0.2;
 
 pose = zeros(3,numel(tVec));    % Inicializar matriz de pose
 pose(:,1) = initPose;
