@@ -56,23 +56,15 @@ end
 
 %%
 
-a = map.getOccupancy;
-b = Tiff('mapa_2022_1c.tiff');
-c = read(b);
+a = map.getOccupancy
+b = Tiff('mapa_2022_1c.tiff')
+c = read(b)
 
 figure()
 imshow(imread('mapa_2022_1c.tiff'))
-axis on
 hold on
 
-for i = 1:size(a,2)
-    disp(i)
-    for j = 1:size(a,1)
-        if a(j,i) < 0.5
-            scatter(i,j,'filled')
-        end
-    end
-end
+for i = 1:
 
 %% Crear sensor lidar en simulador
 lidar = LidarSensor;
