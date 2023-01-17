@@ -9,6 +9,7 @@
 % Robotica Movil - 2022 1c
 close all
 clear all
+clc
 
 verMatlab= ver('MATLAB');   % en MATLAB2020a funciona bien, ajustado para R2016b, los demas a pelearla...
 
@@ -54,25 +55,6 @@ else
     disp(['Utilizando MATLAB ', verMatlab.Release]);
 end
 
-%%
-
-a = map.getOccupancy;
-b = Tiff('mapa_2022_1c.tiff');
-c = read(b);
-
-figure()
-imshow(imread('mapa_2022_1c.tiff'))
-axis on
-hold on
-
-for i = 1:size(a,2)
-    disp(i)
-    for j = 1:size(a,1)
-        if a(j,i) < 0.5
-            scatter(i,j,'filled')
-        end
-    end
-end
 
 %% Crear sensor lidar en simulador
 lidar = LidarSensor;
@@ -100,30 +82,55 @@ initPose = [2; 2.5; -pi/2];         % Pose inicial (x y theta) del robot simulad
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
 
 %% generar comandos a modo de ejemplo
-vxRef = 0.05*ones(size(tVec));   % Velocidad lineal a ser comandada
-wRef = zeros(size(tVec));       % Velocidad angular a ser comandada
-wRef(tVec < 5) = -0.2;
-wRef(tVec >=7.5) = 0.2;
+% vxRef = 0.05*ones(size(tVec));   % Velocidad lineal a ser comandada
+% wRef = zeros(size(tVec));       % Velocidad angular a ser comandada
+% wRef(tVec < 5) = -0.2;
+% wRef(tVec >=7.5) = 0.2;
 
 pose = zeros(3,numel(tVec));    % Inicializar matriz de pose
 pose(:,1) = initPose;
 
+% Para vigilancia 
+target_points = [1.5,1.3; 
+                4.3, 2.1];
+
 %% Simulacion
 
+%##########################################################################
+%                       INICIALIZACION DE PARTICULAS
+%##########################################################################
+particles = initialize_particles(1000,map);
+
+% % Visualizacion de particulas en mapa
+% figure()
+% show(map)
+% hold on
+% plot(particles(:, 1), particles(:, 2), '.');
+
+%##########################################################################
+%                  SECUENCIA DE LOCALIZACION INICIAL (WAKE UP)
+%##########################################################################
+wake_up_duration = 2*pi/0.5; % tiempo en dar una vuelta completa
+tVec_Wake_up = 0:sampleTime:wake_up_duration;
+wRef = -0.5*ones(size(tVec_Wake_up));       % Velocidad angular a ser comandada
+
+%%
 if verMatlab.Release=='(R2016b)'
     r = robotics.Rate(1/sampleTime);    %matlab viejo no tiene funcion rateControl
 else
     r = rateControl(1/sampleTime);  %definicion para R2020a, y posiblemente cualquier version nueva
 end
 
-for idx = 2:numel(tVec)   
+for idx = 2:200%numel(tVec)   
 
-    % Generar aqui criteriosamente velocidades lineales v_cmd y angulares w_cmd
-    % -0.5 <= v_cmd <= 0.5 and -4.25 <= w_cmd <= 4.25
-    % (mantener las velocidades bajas (v_cmd < 0.1) (w_cmd < 0.5) minimiza vibraciones y
-    % mejora las mediciones.   
-    v_cmd = vxRef(idx-1);   % estas velocidades estan como ejemplo ...
-    w_cmd = wRef(idx-1);    %      ... para que el robot haga algo.
+    % Vuelta para localizar
+    if idx < length(tVec_Wake_up)
+       v_cmd = 0;
+       w_cmd = wRef(idx-1);
+    else % quedarse quieto post vuelta
+        v_cmd = 0;
+        w_cmd = 0;
+    end
     
     %% COMPLETAR ACA:
         % generar velocidades para este timestep
