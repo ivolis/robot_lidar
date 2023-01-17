@@ -124,7 +124,7 @@ end
 for idx = 2:200%numel(tVec)   
 
     % Vuelta para localizar
-    if idx < length(tVec_Wake_up)
+    if idx <= length(tVec_Wake_up)+1
        v_cmd = 0;
        w_cmd = wRef(idx-1);
     else % quedarse quieto post vuelta
@@ -196,5 +196,8 @@ for idx = 2:200%numel(tVec)
     % actualizar visualizacion
     viz(pose(:,idx),ranges)
     waitfor(r);
+    
+    % Normalizo la orientacion de la pose
+    pose(3,idx)= normalize_angle(pose(3,idx));
 end
 
