@@ -99,13 +99,14 @@ target_points = [1.5,1.3;
 %##########################################################################
 %                       INICIALIZACION DE PARTICULAS
 %##########################################################################
-particles = initialize_particles(1000,map);
-
+n_particles = 1000
+particles = initialize_particles(n_particles,map);
+particles = {particles repmat(DifferentialDrive(R,L),n_particles,1)};
 % % Visualizacion de particulas en mapa
 % figure()
 % show(map)
 % hold on
-% plot(particles(:, 1), particles(:, 2), '.');
+% plot(particles{1}(:, 1), particles{1}(:, 2), '.');
 
 %##########################################################################
 %                  SECUENCIA DE LOCALIZACION INICIAL (WAKE UP)
@@ -121,12 +122,19 @@ else
     r = rateControl(1/sampleTime);  %definicion para R2020a, y posiblemente cualquier version nueva
 end
 
-for idx = 2:200%numel(tVec)   
-
+for idx = 2:130%numel(tVec)   
+    
+    figure(2)
+    show(map)
+    hold on
+    plot(particles{1}(:, 1), particles{1}(:, 2), '.');
     % Vuelta para localizar
     if idx <= length(tVec_Wake_up)+1
-       v_cmd = 0;
-       w_cmd = wRef(idx-1);
+        v_cmd = 0.1;
+        w_cmd = wRef(idx-1);
+        % Visualizacion de particulas en mapa
+        particles = motion_model([v_cmd w_cmd], particles, sampleTime);
+%         particles{1}(10,:)
     else % quedarse quieto post vuelta
         v_cmd = 0;
         w_cmd = 0;
@@ -180,6 +188,9 @@ for idx = 2:200%numel(tVec)
             ranges(not_valid<=chance_de_medicion_no_valida)=NaN;
         end
     end
+    % Normalizo la orientacion de la pose
+    pose(3,idx)= normalize_angle(pose(3,idx));
+    
     %%
     % Aca el robot ya ejecutó las velocidades comandadas y devuelve en la
     % variable ranges la medicion del lidar para ser usada y
@@ -197,7 +208,6 @@ for idx = 2:200%numel(tVec)
     viz(pose(:,idx),ranges)
     waitfor(r);
     
-    % Normalizo la orientacion de la pose
-    pose(3,idx)= normalize_angle(pose(3,idx));
+
 end
 
