@@ -76,7 +76,7 @@ attachLidarSensor(viz,lidar);
 
 simulationDuration = 3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
-initPose = [2; 2.5; -pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
+initPose = [4; 2; -pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
@@ -99,14 +99,8 @@ target_points = [1.5,1.3;
 %##########################################################################
 %                       INICIALIZACION DE PARTICULAS
 %##########################################################################
-n_particles = 1000
+n_particles = 1000;
 particles = initialize_particles(n_particles,map);
-particles = {particles repmat(DifferentialDrive(R,L),n_particles,1)};
-% % Visualizacion de particulas en mapa
-% figure()
-% show(map)
-% hold on
-% plot(particles{1}(:, 1), particles{1}(:, 2), '.');
 
 %##########################################################################
 %                  SECUENCIA DE LOCALIZACION INICIAL (WAKE UP)
@@ -124,26 +118,27 @@ end
 
 for idx = 2:130%numel(tVec)   
     
+    % Visualizacion de particulas en mapa
     figure(2)
     show(map)
     hold on
-    plot(particles{1}(:, 1), particles{1}(:, 2), '.');
+    plot(particles(:, 1), particles(:, 2), '.');
+
+    
+    %% COMPLETAR ACA:
+    % generar velocidades para este timestep
+    
     % Vuelta para localizar
     if idx <= length(tVec_Wake_up)+1
         v_cmd = 0.1;
         w_cmd = wRef(idx-1);
-        % Visualizacion de particulas en mapa
-        particles = motion_model([v_cmd w_cmd], particles, sampleTime);
-%         particles{1}(10,:)
     else % quedarse quieto post vuelta
         v_cmd = 0;
         w_cmd = 0;
     end
     
-    %% COMPLETAR ACA:
-        % generar velocidades para este timestep
-        
-        % fin del COMPLETAR ACA
+    
+    % fin del COMPLETAR ACA
     
     %% a partir de aca el robot real o el simulador ejecutan v_cmd y w_cmd:
     
@@ -190,11 +185,14 @@ for idx = 2:130%numel(tVec)
     end
     % Normalizo la orientacion de la pose
     pose(3,idx)= normalize_angle(pose(3,idx));
-    
     %%
     % Aca el robot ya ejecutó las velocidades comandadas y devuelve en la
     % variable ranges la medicion del lidar para ser usada y
-    % en la variable pose(:,idx) la odometría actual.
+    % en la variable pose(:,idx) la odometría actual.    
+    
+    tic
+    particles = motion_model([v_cmd w_cmd], particles, sampleTime, dd);
+    toc
     
     %% COMPLETAR ACA:
         % hacer algo con la medicion del lidar (ranges) y con el estado
