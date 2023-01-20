@@ -99,15 +99,22 @@ target_points = [1.5,1.3;
 %##########################################################################
 %                       INICIALIZACION DE PARTICULAS
 %##########################################################################
-n_particles = 1000;
+n_particles = 2000;
 particles = initialize_particles(n_particles,map);
 
 %##########################################################################
 %                  SECUENCIA DE LOCALIZACION INICIAL (WAKE UP)
 %##########################################################################
-wake_up_duration = 2*pi/0.5; % tiempo en dar una vuelta completa
+wake_up_duration = 2*pi/0.5; % tiempo en dar una vuelta completa a w_max = 0.5
 tVec_Wake_up = 0:sampleTime:wake_up_duration;
-wRef = -0.5*ones(size(tVec_Wake_up));       % Velocidad angular a ser comandada
+wRef = -0.5*ones(size(tVec_Wake_up));       % Velocidad angular a ser comandada (maxima posible)
+sequence_state_wake_up = 'wakeup';
+
+%##########################################################################
+%                  SECUENCIA DE PLANEAMIENTO (PLANNING)
+%##########################################################################
+sequence_state_planning = 'planning';
+
 
 %%
 if verMatlab.Release=='(R2016b)'
@@ -116,6 +123,9 @@ else
     r = rateControl(1/sampleTime);  %definicion para R2020a, y posiblemente cualquier version nueva
 end
 
+
+% Inicializo el robot en la secuencia de wakeup
+sequence_state = sequence_state_wake_up;
 for idx = 2:130%numel(tVec)   
     
     % Visualizacion de particulas en mapa
@@ -129,13 +139,19 @@ for idx = 2:130%numel(tVec)
     % generar velocidades para este timestep
     
     % Vuelta para localizar
-    if idx <= length(tVec_Wake_up)+1
-        v_cmd = 0.1;
+    if(strcmp(sequence_state, sequence_state_wake_up))
+        v_cmd = 0;
         w_cmd = wRef(idx-1);
-    else % quedarse quieto post vuelta
+        if idx > length(tVec_Wake_up)
+            sequence_state = sequence_state_planning;
+        end
+    end
+    
+    if(strcmp(sequence_state, sequence_state_planning))
         v_cmd = 0;
         w_cmd = 0;
     end
+
     
     
     % fin del COMPLETAR ACA
@@ -184,24 +200,24 @@ for idx = 2:130%numel(tVec)
         end
     end
     % Normalizo la orientacion de la pose
-    pose(3,idx)= normalize_angle(pose(3,idx));
-    %%
-    % Aca el robot ya ejecutó las velocidades comandadas y devuelve en la
-    % variable ranges la medicion del lidar para ser usada y
-    % en la variable pose(:,idx) la odometría actual.    
-    
-    tic
+    pose(3,idx)= normalize_angle(pose(3,idx));  
+
+    % Muevo las particulas segun el modelo de movim
     particles = motion_model([v_cmd w_cmd], particles, sampleTime, dd);
-    toc
-    
-    %% COMPLETAR ACA:
-        % hacer algo con la medicion del lidar (ranges) y con el estado
-        % actual de la odometria ( pose(:,idx) )
+  
+    % Si sigo en wake up debo localizarme en el mapa, resampleo con el
+    % modelo de medicion
+    if(strcmp(sequence_state, sequence_state_wake_up))
+        weights = measurement_model(ranges, particles, map);
+        normalizer = sum(weights);
+        weights = weights ./ normalizer;
+        particles = resample(particles, weights, size(particles, 1));
+    end
+%     
+%     if(idx==129)
+%         particles = resample(particles, weights, size(particles, 1)/2);
+%     end
         
-        
-        % Fin del COMPLETAR ACA
-        
-    %%
     % actualizar visualizacion
     viz(pose(:,idx),ranges)
     waitfor(r);
@@ -209,3 +225,29 @@ for idx = 2:130%numel(tVec)
 
 end
 
+%%
+
+% lidar = LidarSensor;
+% lidar.sensorOffset = [0,0];   % Posicion del sensor en el robot (asumiendo mundo 2D)
+% scaleFactor = 3;                %decimar lecturas de lidar acelera el algoritmo
+% num_scans = 513/scaleFactor;
+% hokuyo_step_a = deg2rad(-90);
+% hokuyo_step_c = deg2rad(90);
+% 
+% lidar.scanAngles = linspace(hokuyo_step_a,hokuyo_step_c,num_scans);
+% lidar.maxRange = 5;
+% 
+% 
+% viz = Visualizer2D;
+% viz.mapName = 'map';
+% attachLidarSensor(viz,lidar);
+% 
+% intsectionPts = rayIntersection(map, pose(:,5), linspace(-pi/2,pi/2,513), 5)
+% figure(2)
+% show(map)
+% hold on
+% plot(intsectionPts(:,1),intsectionPts(:,2),'*r')
+% plot(pose(1,5),pose(2,5), 'o')
+% viz(pose(:,5),ranges)
+% 
+% length(intsectionPts)
