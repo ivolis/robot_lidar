@@ -21,13 +21,13 @@ function weights = measurement_model(ranges, x, map)
     for i = 1:length(x) % para todas particulas
         
         idx_to_see = randperm(length(ranges),n_angles_to_see);
-        angles = angles(idx_to_see);
-        ranges = ranges(idx_to_see);
-        intersection_points = rayIntersection(map, x(i, :), angles, lidar_max_range);
+        angles_to_see = angles(idx_to_see);
+        ranges_to_see = ranges(idx_to_see);
+        intersection_points = rayIntersection(map, x(i, :), angles_to_see, lidar_max_range);
 
-        for j = 1:length(angles) % para cada medicion
+        for j = 1:length(angles_to_see) % para cada medicion
             
-            if(isnan(ranges(j)) || ranges(j)< 0.20)
+            if(isnan(ranges_to_see(j)) || ranges_to_see(j)< 0.20)
                 % La consigna dice que si es NaN o <20 cm, es erronea
                 continue;
             end
@@ -38,7 +38,7 @@ function weights = measurement_model(ranges, x, map)
                 d_hat = sqrt( (intersection_points(j,1) - x(i,1)).^2 + (intersection_points(j,2) - x(i,2)).^2);
             end
  
-            weights(i) = weights(i) + normpdf(0,d_hat-ranges(j),sigma);% bayes
+            weights(i) = weights(i) + normpdf(0,d_hat-ranges_to_see(j),sigma);% bayes
         end
         eta = eta + weights(i); % eta + belief, digamos
     
