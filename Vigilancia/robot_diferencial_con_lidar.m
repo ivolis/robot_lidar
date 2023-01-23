@@ -41,6 +41,9 @@ R = 0.072/2;                % Radio de las ruedas [m]
 L = 0.235;                  % Distancia entre ruedas [m]
 dd = DifferentialDrive(R,L); % creacion del Simulador de robot diferencial
 
+v_max = 0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
+w_max = 0.5; % [rad/s] abs(), + giro antihorario - giro horario
+
 %% Creacion del entorno
 load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
 
@@ -81,20 +84,16 @@ initPose = [4; 2; -pi/2];         % Pose inicial (x y theta) del robot simulado 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
 
-%% generar comandos a modo de ejemplo
-% vxRef = 0.05*ones(size(tVec));   % Velocidad lineal a ser comandada
-% wRef = zeros(size(tVec));       % Velocidad angular a ser comandada
-% wRef(tVec < 5) = -0.2;
-% wRef(tVec >=7.5) = 0.2;
-
-pose = zeros(3,numel(tVec));    % Inicializar matriz de pose
+%% Inicializar matriz de pose
+pose = zeros(3,numel(tVec));
 pose(:,1) = initPose;
 
-% Para vigilancia 
-target_points = [1.5,1.3; 
-                4.3, 2.1];
-
 %% Simulacion
+
+% Para vigilancia 
+target_points = [4, 1.3;
+                1.5,1.3; 
+                4.3, 2.1];
 
 %##########################################################################
 %                       INICIALIZACION DE PARTICULAS
@@ -105,9 +104,9 @@ particles = initialize_particles(n_particles,map);
 %##########################################################################
 %                  SECUENCIA DE LOCALIZACION INICIAL (WAKE UP)
 %##########################################################################
-wake_up_duration = 2*pi/0.5; % tiempo en dar una vuelta completa a w_max = 0.5
+wake_up_duration = 2*pi/w_max; % tiempo en dar una vuelta completa a w_max = 0.5
 tVec_Wake_up = 0:sampleTime:wake_up_duration;
-wRef = -0.5*ones(size(tVec_Wake_up));       % Velocidad angular a ser comandada (maxima posible)
+w_wake_up = -w_max*ones(size(tVec_Wake_up));
 sequence_state_wake_up = 'wakeup';
 
 %##########################################################################
@@ -126,8 +125,9 @@ end
 
 % Inicializo el robot en la secuencia de wakeup
 sequence_state = sequence_state_wake_up;
-test_plan = 0;
-for idx = 2:130%numel(tVec)   
+motion_idx = 1;
+path_idx = 1;
+for idx = 2:numel(tVec)-1400
     
     % Visualizacion de particulas en mapa
     figure(2)
@@ -142,18 +142,30 @@ for idx = 2:130%numel(tVec)
     % Vuelta para localizar
     if(strcmp(sequence_state, sequence_state_wake_up))
         v_cmd = 0;
-        w_cmd = wRef(idx-1);
+        w_cmd = w_wake_up(idx-1);
         if idx > length(tVec_Wake_up)
             sequence_state = sequence_state_planning;
         end
     end
-    
-    if(strcmp(sequence_state, sequence_state_planning))
-        v_cmd = 0;
-        w_cmd = 0;
-        test_plan = 1;
-    end
 
+
+    
+    % check que no se haya ido mucho de trayectoria y habria que ponerlo de
+    % nuevo en modo planning.. o cada tanto ponerlo .
+    if(strcmp(sequence_state, 'motion')) 
+        v_cmd = v_motion(motion_idx);
+        w_cmd = w_motion(motion_idx);
+        motion_idx = motion_idx + 1;
+        path_idx = path_idx + 1;
+        if motion_idx >= length(v_motion)
+            disp("FINALIZO RECORRIDO")
+            sequence_state = 'finish';
+            v_cmd = 0;
+            w_cmd = 0;
+        end
+        plot(path(:, 1), path(:, 2), '.');
+    end
+    
     
     
     % fin del COMPLETAR ACA
@@ -219,14 +231,16 @@ for idx = 2:130%numel(tVec)
         particles = resample(particles, weights, size(particles, 1));
     end
     
-    if(test_plan)
-        [max_weigth max_weigth_idx] = max(weights);
-        best_particle = particles(max_weigth_idx,:);
-        estim_pos_robot_xy = [best_particle(1) best_particle(2)];
+    
+    if(strcmp(sequence_state, sequence_state_planning))
+        estim_pos_robot_xy = possible_position(particles, weights);
         path = A_star_planning(map,estim_pos_robot_xy,target_points(1,:));
         plot(path(:, 1), path(:, 2), '.');
-        test_plan=0;
+        [v_motion, w_motion] = planning_motion(estim_pos_robot_xy,path,sampleTime, v_max, w_max);
+        sequence_state = 'motion';
     end
+   
+
         
     % actualizar visualizacion
     viz(pose(:,idx),ranges)
@@ -234,30 +248,3 @@ for idx = 2:130%numel(tVec)
     
     
 end
-
-%%
-
-% lidar = LidarSensor;
-% lidar.sensorOffset = [0,0];   % Posicion del sensor en el robot (asumiendo mundo 2D)
-% scaleFactor = 3;                %decimar lecturas de lidar acelera el algoritmo
-% num_scans = 513/scaleFactor;
-% hokuyo_step_a = deg2rad(-90);
-% hokuyo_step_c = deg2rad(90);
-% 
-% lidar.scanAngles = linspace(hokuyo_step_a,hokuyo_step_c,num_scans);
-% lidar.maxRange = 5;
-% 
-% 
-% viz = Visualizer2D;
-% viz.mapName = 'map';
-% attachLidarSensor(viz,lidar);
-% 
-% intsectionPts = rayIntersection(map, pose(:,5), linspace(-pi/2,pi/2,513), 5)
-% figure(2)
-% show(map)
-% hold on
-% plot(intsectionPts(:,1),intsectionPts(:,2),'*r')
-% plot(pose(1,5),pose(2,5), 'o')
-% viz(pose(:,5),ranges)
-% 
-% length(intsectionPts)
