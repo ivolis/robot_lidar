@@ -31,6 +31,9 @@ function x_new = motion_model(u, x)
         odom(:, 1) + odom(:, 3)
     ];
 
+    % Normalizo el angulo
+    x_new(:,3) = normalize_angle(x_new(:,3));
+
 
 %%  Implementacion anterior (lenta y no deja modificar el ruido)
 %     x_new = zeros(size(x));

@@ -11,6 +11,8 @@ close all
 clear all
 clc
 
+rng(30);
+
 verMatlab= ver('MATLAB');   % en MATLAB2020a funciona bien, ajustado para R2016b, los demas a pelearla...
 
 simular_ruido_lidar = false; %simula datos no validos del lidar real, probar si se la banca
@@ -41,8 +43,8 @@ R = 0.072/2;                % Radio de las ruedas [m]
 L = 0.235;                  % Distancia entre ruedas [m]
 dd = DifferentialDrive(R,L); % creacion del Simulador de robot diferencial
 
-v_max = 0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
-w_max = 0.5; % [rad/s] abs(), + giro antihorario - giro horario
+v_max = 0.1%0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
+w_max = 0.2%0.5; % [rad/s] abs(), + giro antihorario - giro horario
 
 %% Creacion del entorno
 load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
@@ -91,7 +93,7 @@ pose(:,1) = initPose;
 %% Simulacion
 
 % Para vigilancia 
-target_points = [4, 1.3;
+target_points = [2, 1.5;
                 1.5,1.3; 
                 4.3, 2.1];
 
@@ -125,9 +127,13 @@ end
 
 % Inicializo el robot en la secuencia de wakeup
 sequence_state = sequence_state_wake_up;
-motion_idx = 1;
+cmd_motion_idx = 1;
 path_idx = 1;
-for idx = 2:numel(tVec)-1400
+new_cmds = false;
+resample_idx = 1;
+inflated_map = copy(map)
+inflate(inflated_map,0.2);
+for idx = 2:numel(tVec)%-1400
     
     % Visualizacion de particulas en mapa
     figure(2)
@@ -147,21 +153,42 @@ for idx = 2:numel(tVec)-1400
             sequence_state = sequence_state_planning;
         end
     end
-
-
     
-    % check que no se haya ido mucho de trayectoria y habria que ponerlo de
-    % nuevo en modo planning.. o cada tanto ponerlo .
-    if(strcmp(sequence_state, 'motion')) 
-        v_cmd = v_motion(motion_idx);
-        w_cmd = w_motion(motion_idx);
-        motion_idx = motion_idx + 1;
-        path_idx = path_idx + 1;
-        if motion_idx >= length(v_motion)
-            disp("FINALIZO RECORRIDO")
+    if(new_cmds)
+        if(path_idx <= length(path))
+            estim_pos_robot = possible_position(particles, weights);
+            [v_cmd_motion, w_cmd_motion, close_flag] = get_cmd(estim_pos_robot, ...
+                                                    path(path_idx,:),  ...
+                                                    sampleTime, v_max, w_max);
+            new_cmds = false;
+            plot(path(:, 1), path(:, 2), '.');
+            % los movimientos angulares no avazan el path
+            if(v_cmd_motion ~= 0  | close_flag == true)
+                path_idx = path_idx + 1;
+            end
+        else
             sequence_state = 'finish';
             v_cmd = 0;
             w_cmd = 0;
+            new_cmd = false;
+        end
+    end
+
+
+    if(strcmp(sequence_state, 'motion')) 
+        if cmd_motion_idx <= length(v_cmd_motion)
+            v_cmd = v_cmd_motion(cmd_motion_idx);
+            w_cmd = w_cmd_motion(cmd_motion_idx);
+            cmd_motion_idx = cmd_motion_idx + 1;
+        else
+            new_cmds = true;
+            cmd_motion_idx = 1;
+            % testeo cada cuanto usar el meas model
+            weights = measurement_model(ranges, particles, map);
+            normalizer = sum(weights);
+            weights = weights ./ normalizer;
+            particles = resample(particles, weights, size(particles, 1));
+            
         end
         plot(path(:, 1), path(:, 2), '.');
     end
@@ -213,31 +240,35 @@ for idx = 2:numel(tVec)-1400
             ranges(not_valid<=chance_de_medicion_no_valida)=NaN;
         end
     end
-    % Normalizo la orientacion de la pose
-    pose(3,idx)= normalize_angle(pose(3,idx));  
-   
     
     % Accion de odometria realiza segun pose actual y anterior
     odometry = get_odometry(pose(:,idx),pose(:,idx-1));
     % Muevo las particulas segun el modelo de movim
     particles = motion_model(odometry, particles);
-  
     % Si sigo en wake up debo localizarme en el mapa, resampleo con el
     % modelo de medicion
     if(strcmp(sequence_state, sequence_state_wake_up))
-        weights = measurement_model(ranges, particles, map);
-        normalizer = sum(weights);
-        weights = weights ./ normalizer;
-        particles = resample(particles, weights, size(particles, 1));
+        if(resample_idx < 4)
+            weights = measurement_model(ranges, particles, map);
+            normalizer = sum(weights);
+            weights = weights ./ normalizer;
+            particles = resample(particles, weights, size(particles, 1)/2);
+            resample_idx = resample_idx + 1;
+        else
+            weights = measurement_model(ranges, particles, map);
+            normalizer = sum(weights);
+            weights = weights ./ normalizer;
+            particles = resample(particles, weights, size(particles, 1));
+        end
     end
     
     
     if(strcmp(sequence_state, sequence_state_planning))
-        estim_pos_robot_xy = possible_position(particles, weights);
-        path = A_star_planning(map,estim_pos_robot_xy,target_points(1,:));
+        estim_pos_robot = possible_position(particles, weights);
+        path = A_star_planning(inflated_map,estim_pos_robot(1:2),target_points(1,:));
         plot(path(:, 1), path(:, 2), '.');
-        [v_motion, w_motion] = planning_motion(estim_pos_robot_xy,path,sampleTime, v_max, w_max);
         sequence_state = 'motion';
+        new_cmds = true;
     end
    
 
@@ -245,6 +276,5 @@ for idx = 2:numel(tVec)-1400
     % actualizar visualizacion
     viz(pose(:,idx),ranges)
     waitfor(r);
-    
     
 end

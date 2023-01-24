@@ -5,7 +5,7 @@ function new_particles = resample(particles, weights, M)
     % particles (M x D): set of M particles to sample from. Each row contains a state hypothesis of dimension D.
     % weights (M x 1): weights of the particles. Each row contains a weight.
     
-    new_particles = zeros(length(particles),3);
+    new_particles = zeros(M,3);
     
     % Inicializo
     c = cumsum(weights);
