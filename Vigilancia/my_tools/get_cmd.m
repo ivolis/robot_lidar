@@ -8,7 +8,7 @@ function [v_cmd_Vec, w_cmd_Vec, close_flag] = get_cmd(pose,path_point,sampletime
         close_flag = true;
     else
         close_flag = false;
-        angle_diff = normalize_angle(angle_between_points-pose(3))
+        angle_diff = normalize_angle(angle_between_points-pose(3));
         if abs(angle_diff) > 0.2
             % Velocidad angular
             t = abs(angle_diff)/w_max; % mcu -> wt = theta;

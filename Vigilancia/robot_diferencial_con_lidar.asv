@@ -43,8 +43,8 @@ R = 0.072/2;                % Radio de las ruedas [m]
 L = 0.235;                  % Distancia entre ruedas [m]
 dd = DifferentialDrive(R,L); % creacion del Simulador de robot diferencial
 
-v_max = 0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
-w_max = 0.5; % [rad/s] abs(), + giro antihorario - giro horario
+v_max = 0.1%0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
+w_max = 0.2%0.5; % [rad/s] abs(), + giro antihorario - giro horario
 
 %% Creacion del entorno
 load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
@@ -115,7 +115,7 @@ sequence_state_wake_up = 'wakeup';
 %                  SECUENCIA DE PLANEAMIENTO (PLANNING)
 %##########################################################################
 sequence_state_planning = 'planning';
-inflated_map = copy(map);
+inflated_map = copy(map)
 inflate(inflated_map,0.2);
 
 %%
@@ -133,17 +133,13 @@ path_idx = 1;
 new_cmds = false;
 resample_idx = 1;
 resample_iter_ease = 4;
-
-
-
-
 for idx = 2:numel(tVec)%-1400
     
     % Visualizacion de particulas en mapa
     figure(2)
     show(map)
     hold on
-    plot(particles(:, 1), particles(:, 2), '.')
+    plot(particles(:, 1), particles(:, 2), '.');
 
     
     % Vuelta para localizar
@@ -192,7 +188,6 @@ for idx = 2:numel(tVec)%-1400
             weights = weights ./ normalizer;
             particles = resample(particles, weights, size(particles, 1));   
         end
-        plot(path(:, 1), path(:, 2), '.');
     end
     
 
@@ -270,6 +265,7 @@ for idx = 2:numel(tVec)%-1400
         sequence_state = 'motion';
         new_cmds = true;
     end
+   
 
         
     % actualizar visualizacion
