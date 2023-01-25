@@ -2,7 +2,7 @@ function [v_cmd_Vec, w_cmd_Vec, close_flag] = get_cmd(pose,path_point,sampletime
 
     [angle_between_points, distance] = cart2pol(path_point(1) - pose(1), ...
                                             path_point(2) - pose(2));
-    if distance < 0.25 % esto es mucho, encararlo por otro lado (idx de path?)
+    if distance < 0.1 % esto es mucho, encararlo por otro lado (idx de path?)
         v_cmd_Vec = 0;
         w_cmd_Vec = 0;
         close_flag = true;
