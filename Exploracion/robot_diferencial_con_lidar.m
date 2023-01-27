@@ -47,7 +47,7 @@ if verMatlab.Release=='(R2016b)'
     %Para versiones anteriores de MATLAB, puede ser necesario ajustar mapa
     imagen_mapa = 1-double(imread('mapa_2022_1c.tiff'))/255;
     map = robotics.OccupancyGrid(imagen_mapa, 25);
-elseif verMatlab.Release(1:5)=='(R201'    % Completar con la version que tengan
+elseif verMatlab.Release(1:5)=='(R2020a)'    % Completar con la version que tengan
     %Ni idea que pasa, ver si el truco R2016b funciona
     disp('ver si la compatibilidad R2016b funciona');
 else
@@ -79,12 +79,7 @@ initPose = [2; 2.5; -pi/2];         % Pose inicial (x y theta) del robot simulad
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
 
-%% generar comandos a modo de ejemplo
-vxRef = 0.05*ones(size(tVec));   % Velocidad lineal a ser comandada
-wRef = zeros(size(tVec));       % Velocidad angular a ser comandada
-wRef(tVec < 5) = -0.2;
-wRef(tVec >=7.5) = 0.2;
-
+% Guardo las poses
 pose = zeros(3,numel(tVec));    % Inicializar matriz de pose
 pose(:,1) = initPose;
 
@@ -96,19 +91,23 @@ else
     r = rateControl(1/sampleTime);  %definicion para R2020a, y posiblemente cualquier version nueva
 end
 
+%% LidarSLAM
+resolution = map.Resolution;
+robot = lidarSLAM(resolution, lidar.maxRange);
+robot.LoopClosureThreshold = 30; % se setea empiricamente
+robot.LoopClosureSearchRadius = 8; % se setea empiricamente
+
+
+%%
+v_cmd = 0;
+w_cmd = 0;
+new_cmd = false;
+
 for idx = 2:numel(tVec)   
 
-    % Generar aqui criteriosamente velocidades lineales v_cmd y angulares w_cmd
-    % -0.5 <= v_cmd <= 0.5 and -4.25 <= w_cmd <= 4.25
-    % (mantener las velocidades bajas (v_cmd < 0.1) (w_cmd < 0.5) minimiza vibraciones y
-    % mejora las mediciones.   
-    v_cmd = vxRef(idx-1);   % estas velocidades estan como ejemplo ...
-    w_cmd = wRef(idx-1);    %      ... para que el robot haga algo.
-    
-    %% COMPLETAR ACA:
-        % generar velocidades para este timestep
-        
-        % fin del COMPLETAR ACA
+    if(new_cmd)
+        [v_cmd w_cmd] = robot_motion(args,args);
+    end
     
     %% a partir de aca el robot real o el simulador ejecutan v_cmd y w_cmd:
     
@@ -153,19 +152,12 @@ for idx = 2:numel(tVec)
             ranges(not_valid<=chance_de_medicion_no_valida)=NaN;
         end
     end
-    %%
-    % Aca el robot ya ejecutó las velocidades comandadas y devuelve en la
-    % variable ranges la medicion del lidar para ser usada y
-    % en la variable pose(:,idx) la odometría actual.
+
+    % Creo un scan con la lectura del lidar y los angulos asociados a c/u
+    scan = lidarScan(ranges,lidar.scanAngles);
+    addScan(robot,scan); % añado al robot LidarSLAM el scan
+    new_cmd = true;
     
-    %% COMPLETAR ACA:
-        % hacer algo con la medicion del lidar (ranges) y con el estado
-        % actual de la odometria ( pose(:,idx) )
-        
-        
-        % Fin del COMPLETAR ACA
-        
-    %%
     % actualizar visualizacion
     viz(pose(:,idx),ranges)
     waitfor(r);
