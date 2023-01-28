@@ -9,6 +9,7 @@
 % Robotica Movil - 2022 1c
 close all
 clear all
+clc
 
 verMatlab= ver('MATLAB');   % en MATLAB2020a funciona bien, ajustado para R2016b, los demas a pelearla...
 
@@ -40,6 +41,9 @@ R = 0.072/2;                % Radio de las ruedas [m]
 L = 0.235;                  % Distancia entre ruedas [m]
 dd = DifferentialDrive(R,L); % creacion del Simulador de robot diferencial
 
+v_max = 0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
+w_max = 0.5; % [rad/s] abs(), + giro antihorario - giro horario
+
 %% Creacion del entorno
 load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
 
@@ -47,7 +51,7 @@ if verMatlab.Release=='(R2016b)'
     %Para versiones anteriores de MATLAB, puede ser necesario ajustar mapa
     imagen_mapa = 1-double(imread('mapa_2022_1c.tiff'))/255;
     map = robotics.OccupancyGrid(imagen_mapa, 25);
-elseif verMatlab.Release(1:5)=='(R2020a)'    % Completar con la version que tengan
+elseif verMatlab.Release=='(R2020a)'    % Completar con la version que tengan
     %Ni idea que pasa, ver si el truco R2016b funciona
     disp('ver si la compatibilidad R2016b funciona');
 else
@@ -103,10 +107,11 @@ v_cmd = 0;
 w_cmd = 0;
 new_cmd = false;
 
+tic
 for idx = 2:numel(tVec)   
 
     if(new_cmd)
-        [v_cmd w_cmd] = robot_motion(args,args);
+        [v_cmd w_cmd] = robot_motion(ranges, lidar.scanAngles, w_max, v_max);
     end
     
     %% a partir de aca el robot real o el simulador ejecutan v_cmd y w_cmd:
@@ -154,12 +159,33 @@ for idx = 2:numel(tVec)
     end
 
     % Creo un scan con la lectura del lidar y los angulos asociados a c/u
-    scan = lidarScan(ranges,lidar.scanAngles);
-    addScan(robot,scan); % añado al robot LidarSLAM el scan
-    new_cmd = true;
+    if(mod(idx,20))
+        scan = lidarScan(ranges,lidar.scanAngles);
+        addScan(robot,scan); % añado al robot LidarSLAM el scan
+        new_cmd = true;
+    end
     
-    % actualizar visualizacion
+    % actualizar visualizacion (ver como hacer para poner ambas)
+    figure(1)
+    show(robot);
+    
     viz(pose(:,idx),ranges)
-    waitfor(r);
+    waitfor(r);    
+    toc
+    
+%     % esto seria para robot real, para la sim dejo hasta q temrine for o no?
+    if(toc > simulationDuration) % pasaron 3 mins ya, terminar exploracion
+        break; % similar a usar un break
+    end
+    
 end
 
+%%
+
+[scansSLAM,poses] = scansAndPoses(robot);
+occMap = buildMap(scansSLAM,poses,resolution,2);
+figure
+show(occMap)
+title('Mapa de Ocupación')
+xlabel('X [m]')
+ylabel('Y [m]')
