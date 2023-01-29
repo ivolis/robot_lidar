@@ -13,7 +13,7 @@ clc
 
 verMatlab= ver('MATLAB');   % en MATLAB2020a funciona bien, ajustado para R2016b, los demas a pelearla...
 
-simular_ruido_lidar = false; %simula datos no validos del lidar real, probar si se la banca
+simular_ruido_lidar = true;%false; %simula datos no validos del lidar real, probar si se la banca
 use_roomba=false;  % false para desarrollar usando el simulador, true para conectarse al robot real
 
 addpath('my_tools'); % cualquier funcion extra que haya hecho yo
@@ -78,7 +78,7 @@ attachLidarSensor(viz,lidar);
 
 simulationDuration = 3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
-initPose = [2; 2.5; -pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
+initPose = [4.2; 2.8; pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
@@ -98,20 +98,46 @@ end
 %% LidarSLAM
 resolution = map.Resolution;
 robot = lidarSLAM(resolution, lidar.maxRange);
-robot.LoopClosureThreshold = 30; % se setea empiricamente
-robot.LoopClosureSearchRadius = 8; % se setea empiricamente
-
+robot.LoopClosureThreshold = 120; % se setea empiricamente
+robot.LoopClosureSearchRadius = 1; % se setea empiricamente
 
 %%
 v_cmd = 0;
 w_cmd = 0;
 new_cmd = false;
-
+priority_rotations = ["left" "right"];
+priority_rotation = priority_rotations(1);
+trapped_routine = false;
+robot_trapped = false;
 tic
 for idx = 2:numel(tVec)   
 
     if(new_cmd)
-        [v_cmd w_cmd] = robot_motion(ranges, lidar.scanAngles, w_max, v_max);
+        [v_cmd w_cmd, robot_trapped] = robot_motion(ranges, lidar.scanAngles, ...
+                                              w_max, v_max, priority_rotation);
+    end
+    
+    if(trapped_routine)
+        if trapped_routine_idx <= trapped_routine_length
+            w_cmd = w_cmd_trapped_routine(trapped_routine_idx);
+            trapped_routine_idx = trapped_routine_idx + 1;
+        else
+            trapped_routine = false;
+            new_cmd = true;
+        end
+    else
+        if(robot_trapped)
+            trapped_routine = true;
+            v_cmd = 0;
+            w_cmd = 0; % solo por la iter que "se da cuenta" que quedo atrapado
+            trapped_routine_length = randi([3 5]);
+            if(priority_rotation == "left")
+                w_cmd_trapped_routine = w_max*ones(trapped_routine_length,1);
+            else
+                w_cmd_trapped_routine = -w_max*ones(trapped_routine_length,1);
+            end
+            trapped_routine_idx = 1;
+        end
     end
     
     %% a partir de aca el robot real o el simulador ejecutan v_cmd y w_cmd:
@@ -158,10 +184,20 @@ for idx = 2:numel(tVec)
         end
     end
 
+    % Cambio la prioridad de rotacion
+    if(mod(idx,100) == 0)
+        priority_rotations = flip(priority_rotations);
+        priority_rotation = priority_rotations(1);
+    end
+    
     % Creo un scan con la lectura del lidar y los angulos asociados a c/u
-    if(mod(idx,20))
+    if(mod(idx,15) == 0)
         scan = lidarScan(ranges,lidar.scanAngles);
-        addScan(robot,scan); % añado al robot LidarSLAM el scan
+        [isScanAccepted, loopClosureInfo, optimizationInfo] = ...
+                                addScan(robot,scan); % añado al robot LidarSLAM el scan
+        if(optimizationInfo.IsPerformed)
+            disp("///////LOOP CLOSURE///////")
+        end
         new_cmd = true;
     end
     
@@ -173,9 +209,9 @@ for idx = 2:numel(tVec)
     waitfor(r);    
     toc
     
-%     % esto seria para robot real, para la sim dejo hasta q temrine for o no?
+       
     if(toc > simulationDuration) % pasaron 3 mins ya, terminar exploracion
-        break; % similar a usar un break
+        break;
     end
     
 end
