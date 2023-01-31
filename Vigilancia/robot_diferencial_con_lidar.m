@@ -99,6 +99,7 @@ target_points = [1.5, 1.3;
 %                       INICIALIZACION DE PARTICULAS
 %##########################################################################
 n_particles = 2^12;
+n_particles_final = n_particles/(2^3);
 particles = initialize_particles(n_particles,map);
 
 %##########################################################################
@@ -298,12 +299,11 @@ for idx = 2:numel(tVec)
     % Si sigo en wake up debo localizarme en el mapa, resampleo con el
     % modelo de medicion y voy bajando la cantidad para alivianar computo
     if(strcmp(sequence_state, sequence_state_wake_up))
-        if(resample_idx < resample_iter_ease)
+        if(size(particles, 1) ~= n_particles_final)
             weights = measurement_model(ranges, particles, map);
             normalizer = sum(weights);
             weights = weights ./ normalizer;
             particles = resample(particles, weights, size(particles, 1)/2);
-            resample_idx = resample_idx + 1;
         else
             weights = measurement_model(ranges, particles, map);
             normalizer = sum(weights);
