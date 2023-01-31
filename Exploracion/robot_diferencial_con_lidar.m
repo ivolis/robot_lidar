@@ -78,7 +78,7 @@ attachLidarSensor(viz,lidar);
 
 simulationDuration = 3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
-initPose = [4.2; 2.8; pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
+initPose = [3.1; 1.1; pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
@@ -101,46 +101,62 @@ robot = lidarSLAM(resolution, lidar.maxRange);
 robot.LoopClosureThreshold = 120; % se setea empiricamente
 robot.LoopClosureSearchRadius = 1; % se setea empiricamente
 
-%%
+%% Inicializaciones
+
+% en la primera iteracion todavia no tengo lecturas de lidar hasta el final
 v_cmd = 0;
 w_cmd = 0;
 new_cmd = false;
+% prioridades de rotacion
 priority_rotations = ["left" "right"];
 priority_rotation = priority_rotations(1);
+% robot atrapado
 trapped_routine = false;
 robot_trapped = false;
-tic
+tic % voy a ir chequeando cuanto tarda la simulacion asi puedo poner un corte
+
 for idx = 2:numel(tVec)   
 
+    %% Completado:
+    
+    %----------------------------------------------------------------------
+    %                    Modelo para sacar w_cmd y v_cmd
+    %----------------------------------------------------------------------
     if(new_cmd)
-        [v_cmd w_cmd, robot_trapped] = robot_motion(ranges, lidar.scanAngles, ...
+        [v_cmd, w_cmd, robot_trapped] = robot_motion(ranges, lidar.scanAngles, ...
                                               w_max, v_max, priority_rotation);
     end
     
-    if(trapped_routine)
+    %----------------------------------------------------------------------
+    %                           Robot atrapado
+    %----------------------------------------------------------------------
+    if(trapped_routine) % rutina de robot atrapado activa
         if trapped_routine_idx <= trapped_routine_length
             w_cmd = w_cmd_trapped_routine(trapped_routine_idx);
             trapped_routine_idx = trapped_routine_idx + 1;
         else
-            trapped_routine = false;
+            trapped_routine = false; % termino rutina de robot atrapado
             new_cmd = true;
         end
     else
-        if(robot_trapped)
+        if(robot_trapped) % esta atrapado pero no hay una rutina de RA activa
             trapped_routine = true;
             v_cmd = 0;
             w_cmd = 0; % solo por la iter que "se da cuenta" que quedo atrapado
-            trapped_routine_length = randi([3 5]);
+            trapped_routine_length = randi([3 5]); % rotacion de duracion aleatoria
             if(priority_rotation == "left")
                 w_cmd_trapped_routine = w_max*ones(trapped_routine_length,1);
             else
                 w_cmd_trapped_routine = -w_max*ones(trapped_routine_length,1);
             end
-            trapped_routine_idx = 1;
+            trapped_routine_idx = 1; % inicializacion
         end
     end
     
-    %% a partir de aca el robot real o el simulador ejecutan v_cmd y w_cmd:
+    %%
+    %----------------------------------------------------------------------
+    %                 EJECUCION DE V_CMD Y W_CMD (No tocar)
+    %----------------------------------------------------------------------
     
     if use_roomba       % para usar con el robot real
         
@@ -184,33 +200,45 @@ for idx = 2:numel(tVec)
         end
     end
 
-    % Cambio la prioridad de rotacion
+    %% Completado:
+    %----------------------------------------------------------------------
+    %             Uso de informacion y prioridad de rotaciones
+    %----------------------------------------------------------------------
+    
+    % Cambio la prioridad de rotacion cada tanto para evitar atascarme en
+    % cualquier lugar, esto le da mas libertad al robot
     if(mod(idx,100) == 0)
         priority_rotations = flip(priority_rotations);
         priority_rotation = priority_rotations(1);
     end
     
     % Creo un scan con la lectura del lidar y los angulos asociados a c/u
+    % lo hago cada tanto porque es lo mas pesado para la simulacion
     if(mod(idx,15) == 0)
         scan = lidarScan(ranges,lidar.scanAngles);
         [isScanAccepted, loopClosureInfo, optimizationInfo] = ...
-                                addScan(robot,scan); % añado al robot LidarSLAM el scan
+                                                        addScan(robot,scan);
         if(optimizationInfo.IsPerformed)
             disp("///////LOOP CLOSURE///////")
         end
         new_cmd = true;
     end
     
-    % actualizar visualizacion (ver como hacer para poner ambas)
+    %----------------------------------------------------------------------
+    %                           Visualizaciones
+    %----------------------------------------------------------------------
     figure(1)
     show(robot);
     
     viz(pose(:,idx),ranges)
     waitfor(r);    
+    
+    % Mostrar y guardar el tiempo que tarda por cada iteracion
     toc
     
-       
-    if(toc > simulationDuration) % pasaron 3 mins ya, terminar exploracion
+    % pasaron 3 mins ya, terminar exploracion (por si acaso podria poner un
+    % poco menos por si tarda mas de lo que esperaba)
+    if(toc > simulationDuration) 
         break;
     end
     

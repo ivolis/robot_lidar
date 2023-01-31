@@ -12,9 +12,11 @@ function [v_cmd, w_cmd, robot_trapped]= robot_motion(lidar_ranges, lidar_angles,
     F = ~any(find(collision_angles < pi/4 & collision_angles > -pi/4));
     L = ~any(find(collision_angles > pi/4 & collision_angles < pi/2));
     R = ~any(find(collision_angles < -pi/4 & collision_angles > -pi/2));
-
+    % F -> forward
+    % L -> left       que sean true es que esa direccion esta "libre"
+    % R -> right
     
-    if F % F
+    if F % F (priorizo ir hacia adelante principalmente)
         v_cmd = v_max;
         w_cmd = 0;
     else
