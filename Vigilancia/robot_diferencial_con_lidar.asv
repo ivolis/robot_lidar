@@ -133,8 +133,8 @@ resample_idx = 1;
 resample_iter_ease = 4;
 target_point_idx = 1;
 
-tic % cuento cuanto la simulacion
 for idx = 2:numel(tVec)
+    tic % cuento cuanto tarda cada iteracion
     
     %% Completado:
     
@@ -193,6 +193,8 @@ for idx = 2:numel(tVec)
         end
     end
     
+
+    
     %----------------------------------------------------------------------
     %         Acampado del robot (3 segundos) en puntos intermedios
     %----------------------------------------------------------------------
@@ -238,10 +240,7 @@ for idx = 2:numel(tVec)
     
 
     
-    %%
-    %----------------------------------------------------------------------
-    %                 EJECUCION DE V_CMD Y W_CMD (No tocar)
-    %----------------------------------------------------------------------
+    %% a partir de aca el robot real o el simulador ejecutan v_cmd y w_cmd:
     
     if use_roomba       % para usar con el robot real
         
@@ -284,17 +283,11 @@ for idx = 2:numel(tVec)
             ranges(not_valid<=chance_de_medicion_no_valida)=NaN;
         end
     end
-    %% Completado
-    %----------------------------------------------------------------------
-    %        Accion de odometria realiza segun pose actual y anterior
-    %----------------------------------------------------------------------
+%%
+    % Accion de odometria realiza segun pose actual y anterior
     odometry = get_odometry(pose(:,idx),pose(:,idx-1));
-    % Muevo las particulas segun el modelo de movimiento por odometria
+    % Muevo las particulas segun el modelo de movim
     particles = motion_model(odometry, particles);
-    
-    %----------------------------------------------------------------------
-    %     Modelo de medicion y resampleo respecto a la rutina wake up
-    %----------------------------------------------------------------------
     % Si sigo en wake up debo localizarme en el mapa, resampleo con el
     % modelo de medicion y voy bajando la cantidad para alivianar computo
     if(strcmp(sequence_state, sequence_state_wake_up))
@@ -312,28 +305,29 @@ for idx = 2:numel(tVec)
         end
     end
     
-    %----------------------------------------------------------------------
-    %  Una vez localizado hay que planear la trayectoria (algoritmo A*)
-    %----------------------------------------------------------------------
+    % Una vez localizado hay que planear la trayectoria
     if(strcmp(sequence_state, sequence_state_planning))
         estim_pos_robot = possible_position(particles, weights);
         path = A_star_planning(inflated_map,estim_pos_robot(1:2), ...
                                 target_points(target_point_idx,:));
-        sequence_state = 'motion'; % una vez planeado, hay que moverse
-        new_cmds = true; % pido comandos
+        sequence_state = 'motion';
+        new_cmds = true;
     end
     
-    %----------------------------------------------------------------------
-    %         Actualizar visualizacion (Quitar en version para robot)
-    %----------------------------------------------------------------------
+
+    % actualizar visualizacion (Quitar en version para robot)
     viz(pose(:,idx),ranges)
     waitfor(r);
-
+    
     % Dibujo el robot parado en la "meta" (Quitar en version para robot)
     if(strcmp(sequence_state, 'finish'))
         drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
     end
 
-    toc % veo cuanto tardo hasta esta iteracion
-    
+%       WIP
+%     times_computation(idx,:) = [sequence_state ' ' num2str(toc)]
 end
+
+%%
+% pose_a = possible_position(particles, weights);
+% [a b] = cart2pol(path(path_idx-1,1) - pose_a(1), path(path_idx-1,2) - pose_a(2))
