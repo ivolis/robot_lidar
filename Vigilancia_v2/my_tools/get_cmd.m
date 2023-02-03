@@ -1,28 +1,36 @@
-function [v_cmd_Vec, w_cmd_Vec, close_flag] = get_cmd(pose,path_point,sampletime, v_max, w_max)
+% Falta aceitar cosas para hacer esto
+% function [v_cmd, w_cmd, in_position, no_turn_direction] = ...
+%             get_cmd(pose,path_point, v_max, w_max, distance_thr,angle_thr)
+function [v_cmd, w_cmd, in_position] = ...
+            get_cmd(pose,path_point, v_max, w_max, distance_thr,angle_thr)
 
-    [angle_between_points, distance] = cart2pol(path_point(1) - pose(1), ...
-                                            path_point(2) - pose(2));
-    if distance < 0.1 % esto es mucho, encararlo por otro lado (idx de path?)
-        v_cmd_Vec = 0;
-        w_cmd_Vec = 0;
-        close_flag = true;
-    else
-        close_flag = false;
-        angle_diff = normalize_angle(angle_between_points-pose(3));
-        if abs(angle_diff) > 0.2
-            % Velocidad angular
-            t = abs(angle_diff)/w_max; % mcu -> wt = theta;
-            w_max = sign(angle_diff)*w_max;
-            v_cmd_Vec = v_max*zeros(1,floor(t/sampletime));
-            w_cmd_Vec = w_max*ones(1,floor(t/sampletime));
+    K = 0.8;
+                                        
+    euclidean_distance =  norm(path_point(1:2)- pose(1:2));
+    angle_goal = atan2(path_point(2)-pose(2), path_point(1)-pose(1));
+    angle_diff = angdiff(pose(3),angle_goal);
+
+    if(euclidean_distance > distance_thr)
+        in_position = false;
+        if(abs(angle_diff) > angle_thr)
+            
+            v_cmd = 0;
+            w_cmd = K*angle_diff;
+            if(w_cmd > w_max)
+                w_cmd = sign(angle_diff)*w_max;
+            end
+%             no_turn_direction = false;
         else
-            % Velocidad lineal
-            t = distance/v_max; % mru -> vt=d
-            v_cmd_Vec = v_max*ones(1,ceil(t/sampletime));
-            w_cmd_Vec = w_max*zeros(1,ceil(t/sampletime));
+            v_cmd = v_max;
+            w_cmd = 0;
+%             no_turn_direction = true;
         end
+    else
+        in_position = true;
+%         no_turn_direction = false; % no puedo asegurarlo
+        v_cmd = 0;
+        w_cmd = 0;
     end
-    
 
 
 end

@@ -1,57 +1,31 @@
 % u = v_cmd , w_cmd
-function x_new = motion_model(u, x)
+function new_particles = motion_model(u, particles, deltaT)
     % Samples new particle positions, based on old positions and odometry.
     %
     % u: odometry reading
-    % x: set of old particles
-
+    % particles: set of old particles
+    
+    v = u(1);
+    w = u(2);
+    
     % Noise parameters
-    noise = [0.1 0.1 0.05 0.05];
+    alpha = [0.3; 0.2; 0.1; 0.03; 0.05; 0.08];
 
-    % Particle count
-    pc = size(x, 1);
+    % abs() en vez de ^2??
+    sigma_v = alpha(1)*v^2 + alpha(2)*w^2;
+    sigma_w = alpha(3)*v^2 + alpha(4)*w^2;
+    sigma_gamma = alpha(5)*v^2 + alpha(6)*w^2;
 
-    % Compute normal distributed noise
-    O = repmat([u.r1, u.t, u.r2], pc, 1);
-    M = zeros(pc, 3);
-    S = repmat([
-        max(0.00001, noise(1) * abs(u.r1) + noise(2) * u.t) ...
-        max(0.00001, noise(3) * u.t  + noise(4) * (abs(u.r1) + abs(u.r2))) ...
-        max(0.00001, noise(1) * abs(u.r2) + noise(2) * u.t)
-    ], pc, 1);
-    N = normrnd(M, S, pc, 3);
+    v_noise = v + normrnd(0,sigma_v);  
+    w_noise = w + normrnd(0,sigma_w); 
+    gamma = normrnd(0,sigma_gamma); 
+    
+    % avoid 0 division
+    w_noise(abs(w_noise)<1e-16) = 1e-16;
+    R = v_noise/w_noise;
 
-    % Add noise to the motion for every particle
-    odom = O + N;
-
-    % Compute new particle positions
-    x_new = x + [
-        odom(:, 2) .* cos(x(:, 3) + odom(:, 1)), ...
-        odom(:, 2) .* sin(x(:, 3) + odom(:, 1)), ...
-        odom(:, 1) + odom(:, 3)
-    ];
-
-    % Normalizo el angulo
-    x_new(:,3) = normalize_angle(x_new(:,3));
-
-
-%%  Implementacion anterior (lenta y no deja modificar el ruido)
-%     x_new = zeros(size(x));
-%     v_cmd = u(1);
-%     w_cmd = u(2);
-%     
-%     for i = 1:length(x(:,1))
-%         
-%         dd = diffdrive;
-%         
-%         % Mover el robot segun los comandos generados
-%         [wL,wR] = inverseKinematics(dd,v_cmd,w_cmd);
-%         % Velocidad resultante
-%         [v,w] = forwardKinematics(dd,wL,wR);
-%         velB = [v;0;w]; % velocidades en la terna del robot [vx;vy;w]
-%         vel = bodyToWorld(velB,x(i,:));  % Conversion de la terna del robot a la global
-%         % Realizar un paso de integracion
-%         x_new(i,:) = x(i,:) + (vel*sampleTime)';
-%     end
-
+    new_particles(:,1) = particles(:,1) - R * sin(particles(:,3)) + R * sin(particles(:,3) + w_noise * deltaT);
+    new_particles(:,2) = particles(:,2) + R * cos(particles(:,3)) - R * cos(particles(:,3) + w_noise * deltaT);
+    new_particles(:,3) = wrapToPi(particles(:,3) + w_noise * deltaT + gamma * deltaT);
+    
 end

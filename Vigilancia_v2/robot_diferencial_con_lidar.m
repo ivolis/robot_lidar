@@ -52,7 +52,7 @@ if verMatlab.Release=='(R2016b)'
     %Para versiones anteriores de MATLAB, puede ser necesario ajustar mapa
     imagen_mapa = 1-double(imread('mapa_2022_1c.tiff'))/255;
     map = robotics.OccupancyGrid(imagen_mapa, 25);
-elseif verMatlab.Release(1:5)=='(R201'    % Completar con la version que tengan
+elseif verMatlab.Release=='(R2020a)'    % Completar con la version que tengan
     %Ni idea que pasa, ver si el truco R2016b funciona
     disp('ver si la compatibilidad R2016b funciona');
 else
@@ -80,7 +80,7 @@ attachLidarSensor(viz,lidar);
 
 simulationDuration = 3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
-initPose = [2; 2; -pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
+initPose = [3.2; 3.2; -pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
@@ -99,7 +99,7 @@ target_points = [1.5, 1.3;
 %                       INICIALIZACION DE PARTICULAS
 %##########################################################################
 n_particles = 2^12;
-n_particles_final = n_particles/(2^3);
+n_particles_final = n_particles/(2^4);
 particles = initialize_particles(n_particles,map);
 
 %##########################################################################
@@ -115,7 +115,22 @@ sequence_state_wake_up = 'wakeup';
 %##########################################################################
 sequence_state_planning = 'planning';
 inflated_map = copy(map);
-inflate(inflated_map,0.3);
+inflate(inflated_map,0.23);
+
+%##########################################################################
+%                  SECUENCIA DE MOVIMIENTO (MOTION)
+%#########################################################################
+sequence_state_motion = 'motion';
+euclidean_distance_threshold = 0.1;
+angle_diff_threshold = pi/16;
+
+%##########################################################################
+%                  SECUENCIA DE DESCANSO (REST)
+%#########################################################################
+sequence_state_rest = 'rest';
+% aprox 3 segundos parado (van a ser mas, cambiar maybe)
+rest_time_length = 3/sampleTime;
+
 
 %%
 if verMatlab.Release=='(R2016b)'
@@ -127,26 +142,14 @@ end
 
 %% Inicialiciones del robot
 sequence_state = sequence_state_wake_up; % inicia en secuencia wake up
-cmd_motion_idx = 1;
-path_idx = 1;
-new_cmds = false;
-resample_idx = 1;
-resample_iter_ease = 4;
+new_cmd = false;
 target_point_idx = 1;
-
-tic % cuento cuanto la simulacion
+extra_visualizations = false;
+rest_idx = 1;
+tic
 for idx = 2:numel(tVec)
-    
+%     tic
     %% Completado:
-    
-    %----------------------------------------------------------------------
-    %  Visualizacion de particulas en mapa (Quitar en version para robot)
-    %----------------------------------------------------------------------
-    figure(2)
-    show(map)
-    hold on
-    scatter(particles(:, 1), particles(:, 2), '.', 'blue')
-
     
     %----------------------------------------------------------------------
     %                  Vuelta para localizarse
@@ -159,84 +162,48 @@ for idx = 2:numel(tVec)
         end
     end
     
-    %----------------------------------------------------------------------
-    %  Pedir nuevos comandos para movimiento a lo largo de la trayectoria
-    %----------------------------------------------------------------------
-    if(new_cmds)
-        if(path_idx <= length(path))
-            estim_pos_robot = possible_position(particles, weights);
-            [v_cmd_motion, w_cmd_motion, close_flag] = get_cmd(estim_pos_robot, ...
-                                                    path(path_idx,:),  ...
-                                                    sampleTime, v_max, w_max);
-            new_cmds = false;
-            % Visualizacion del path (Quitar en version para robot)
-            plot(path(:, 1), path(:, 2), '.');
-            % los movimientos angulares no avazan el path
-            if(v_cmd_motion ~= 0  | close_flag == true)
-                path_idx = path_idx + 1;
-            end
-        else
-            % En caso de terminar la trayectoria, me quedo quieto.
-            if(target_point_idx == size(target_points, 1))
-                sequence_state = 'finish';
+    if(new_cmd)
+        if(strcmp(sequence_state, sequence_state_motion))
+            if(path_idx <= length(path))
+%                     [v_cmd, w_cmd, in_position, no_turn_direction] = ...
+                    [v_cmd, w_cmd, in_position] = ...
+                    get_cmd(possible_position(particles, weights), ...
+                            path(path_idx,:), ...
+                            v_max, w_max, ...
+                            euclidean_distance_threshold, angle_diff_threshold);
+%                 if(in_position | no_turn_direction) % faltan aceitar cosas
+                if(in_position)
+                    path_idx = path_idx + 1;
+                    weights = measurement_model(ranges, particles, map);
+                    normalizer = sum(weights);
+                    weights = weights ./ normalizer;
+                    particles = resample(particles, weights, size(particles, 1));
+                end
+            else
                 v_cmd = 0;
                 w_cmd = 0;
-                new_cmds = false;
-            else
-                % Llegue a un punto pero no al destino final, espero 3 segs
                 target_point_idx = target_point_idx + 1;
-                sequence_state = 'quiet';
-                v_cmd_motion = zeros(1,ceil(3/sampleTime));
-                w_cmd_motion = zeros(1,ceil(3/sampleTime));
-                path_idx = 1;
-                new_cmds = false;
+                sequence_state = sequence_state_rest;
+                new_cmd = false;
             end
         end
     end
     
-    %----------------------------------------------------------------------
-    %         Acampado del robot (3 segundos) en puntos intermedios
-    %----------------------------------------------------------------------
-    if(strcmp(sequence_state, 'quiet')) 
-        if cmd_motion_idx <= length(v_cmd_motion) % pongo v pero puede ser w
-            v_cmd = v_cmd_motion(cmd_motion_idx);
-            w_cmd = w_cmd_motion(cmd_motion_idx);
-            cmd_motion_idx = cmd_motion_idx + 1;
-        else
-            new_cmds = true;
-            cmd_motion_idx = 1; 
-            sequence_state = sequence_state_planning;
+    if(strcmp(sequence_state, sequence_state_rest))
+        if(target_point_idx <= length(target_points))
+            v_cmd = 0;
+            w_cmd = 0;
+            rest_idx = rest_idx + 1;
+            if rest_idx > rest_time_length
+                sequence_state = sequence_state_planning;
+                rest_idx = 1;
+            end
+        else % ya recorri todos los puntos, me quedo quieto
+            v_cmd = 0;
+            w_cmd = 0;
+            break; %%%% ESTO O UN TOC A LOS 3 MINS
         end
-        % Visualizo particulas y pose aprox robot (Quitar en version para robot)
-        scatter(target_points(target_point_idx,1), ...
-                    target_points(target_point_idx,2), 'p' , 'red');
-        drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
     end
-    
-    %----------------------------------------------------------------------
-    %               Movimiento a lo largo de la trayectoria
-    %----------------------------------------------------------------------
-    if(strcmp(sequence_state, 'motion')) 
-        if cmd_motion_idx <= length(v_cmd_motion) % pongo v pero puede ser w
-            v_cmd = v_cmd_motion(cmd_motion_idx);
-            w_cmd = w_cmd_motion(cmd_motion_idx);
-            cmd_motion_idx = cmd_motion_idx + 1;
-        else
-            new_cmds = true;
-            cmd_motion_idx = 1;
-            % testeo cada cuanto usar el meas model
-            weights = measurement_model(ranges, particles, map);
-            normalizer = sum(weights);
-            weights = weights ./ normalizer;
-            particles = resample(particles, weights, size(particles, 1));   
-        end
-        % Visualizo particulas,  trayectoria y pose aprox robot (Quitar en version para robot)
-        scatter(path(:, 1), path(:, 2), '.', 'black');
-        scatter(target_points(target_point_idx,1), ...
-                 target_points(target_point_idx,2), 'p' , 'magenta');
-        drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
-    end
-    
 
     
     %%
@@ -285,13 +252,12 @@ for idx = 2:numel(tVec)
             ranges(not_valid<=chance_de_medicion_no_valida)=NaN;
         end
     end
+    
     %% Completado
     %----------------------------------------------------------------------
-    %        Accion de odometria realiza segun pose actual y anterior
+    %               Modelo de movimiento basado en velocidad
     %----------------------------------------------------------------------
-    odometry = get_odometry(pose(:,idx),pose(:,idx-1));
-    % Muevo las particulas segun el modelo de movimiento por odometria
-    particles = motion_model(odometry, particles);
+    particles = motion_model([v_cmd w_cmd], particles, sampleTime);
     
     %----------------------------------------------------------------------
     %     Modelo de medicion y resampleo respecto a la rutina wake up
@@ -319,21 +285,59 @@ for idx = 2:numel(tVec)
         estim_pos_robot = possible_position(particles, weights);
         path = A_star_planning(inflated_map,estim_pos_robot(1:2), ...
                                 target_points(target_point_idx,:));
-        sequence_state = 'motion'; % una vez planeado, hay que moverse
-        new_cmds = true; % pido comandos
+        sequence_state = sequence_state_motion; % una vez planeado, hay que moverse
+        new_cmd = true; % pido comandos
+        path_idx = 1; % inicializo los puntos del path
+        extra_visualizations = true; % (Dejar en false para version robot)
     end
     
     %----------------------------------------------------------------------
     %         Actualizar visualizacion (Quitar en version para robot)
     %----------------------------------------------------------------------
-    viz(pose(:,idx),ranges)
-    waitfor(r);
-
-    % Dibujo el robot parado en la "meta" (Quitar en version para robot)
-    if(strcmp(sequence_state, 'finish'))
-        drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
+    if(~use_roomba)
+        % Lidar Robot
+        viz(pose(:,idx),ranges)
+        waitfor(r);
+%         % Particulas
+%         figure(2)
+%         show(map)
+%         hold on
+%         scatter(particles(:, 1), particles(:, 2), '.', 'blue')
+%         if(extra_visualizations)
+%             % Path
+%             scatter(path(:, 1), path(:, 2), '.', 'black');
+%             % Target point
+%             if target_point_idx > length(target_points)
+%                 scatter(target_points(target_point_idx-1,1), ...
+%                 target_points(target_point_idx-1,2), 'p' , 'magenta');
+%             else % este if solo esta para mostrarlo en finish, es horrible :P
+%                 scatter(target_points(target_point_idx,1), ...
+%                 target_points(target_point_idx,2), 'p' , 'magenta');
+%             end
+%             % Posicion estimada segun particulas
+%             drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
+%         end
     end
 
-    toc % veo cuanto tardo hasta esta iteracion
-    
+    toc
 end
+
+%%
+% % Particulas
+% figure(2)
+% show(map)
+% hold on
+% scatter(particles(:, 1), particles(:, 2), '.', 'blue')
+% 
+% % Path
+% scatter(path(:, 1), path(:, 2), '.', 'black');
+% % Target point
+% if target_point_idx > length(target_points)
+% scatter(target_points(target_point_idx-1,1), ...
+% target_points(target_point_idx-1,2), 'p' , 'magenta');
+% else % este if solo esta para mostrarlo en finish, es horrible :P
+% scatter(target_points(target_point_idx,1), ...
+% target_points(target_point_idx,2), 'p' , 'magenta');
+% end
+% % Posicion estimada segun particulas
+% drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
