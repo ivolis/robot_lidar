@@ -4,7 +4,7 @@
 function [v_cmd, w_cmd, in_position] = ...
             get_cmd(pose,path_point, v_max, w_max, distance_thr,angle_thr)
 
-    K = 0.8;
+    K = 0.3;
                                         
     euclidean_distance =  norm(path_point(1:2)- pose(1:2));
     angle_goal = atan2(path_point(2)-pose(2), path_point(1)-pose(1));

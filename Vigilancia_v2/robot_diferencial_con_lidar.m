@@ -147,6 +147,7 @@ target_point_idx = 1;
 extra_visualizations = false;
 rest_idx = 1;
 tic
+
 for idx = 2:numel(tVec)
 %     tic
     %% Completado:
@@ -175,10 +176,16 @@ for idx = 2:numel(tVec)
                 if(in_position)
                     path_idx = path_idx + 1;
                     weights = measurement_model(ranges, particles, map);
-                    normalizer = sum(weights);
-                    weights = weights ./ normalizer;
                     particles = resample(particles, weights, size(particles, 1));
                 end
+                
+%                 % WIP
+%                 % measu model
+%                 n_eff = 1/sum(weights.^2);
+%                 if(n_eff < size(particles, 1)/2)
+%                     %resampleo
+%                 end
+                
             else
                 v_cmd = 0;
                 w_cmd = 0;
@@ -254,26 +261,51 @@ for idx = 2:numel(tVec)
     end
     
     %% Completado
+     
+    %----------------------------------------------------------------------
+    %         Actualizar visualizacion (Quitar en version para robot)
+    %----------------------------------------------------------------------
+    if(~use_roomba)
+        % Lidar Robot
+        viz(pose(:,idx),ranges)
+        waitfor(r);
+        % Particulas
+        figure(2)
+        show(map)
+        hold on
+        scatter(particles(:, 1), particles(:, 2), '.', 'blue')
+        if(extra_visualizations)
+            % Path
+            scatter(path(:, 1), path(:, 2), '.', 'black');
+            % Target point
+            if target_point_idx  <= length(target_points)
+                scatter(target_points(target_point_idx,1), ...
+                target_points(target_point_idx,2), 'p' , 'magenta');
+            end
+            % Posicion estimada segun particulas
+            drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
+        end
+    end
+    
+    
+    
     %----------------------------------------------------------------------
     %               Modelo de movimiento basado en velocidad
     %----------------------------------------------------------------------
     particles = motion_model([v_cmd w_cmd], particles, sampleTime);
-    
+%     otro modelo que no me convence usar pero que hace nube de hip
+%     particles = motion_model([pose(:,idx-1), pose(:,idx)], particles); %
+
     %----------------------------------------------------------------------
     %     Modelo de medicion y resampleo respecto a la rutina wake up
     %----------------------------------------------------------------------
     % Si sigo en wake up debo localizarme en el mapa, resampleo con el
     % modelo de medicion y voy bajando la cantidad para alivianar computo
     if(strcmp(sequence_state, sequence_state_wake_up))
+        weights = measurement_model(ranges, particles, map);
         if(size(particles, 1) ~= n_particles_final)
-            weights = measurement_model(ranges, particles, map);
-            normalizer = sum(weights);
-            weights = weights ./ normalizer;
             particles = resample(particles, weights, size(particles, 1)/2);
         else
-            weights = measurement_model(ranges, particles, map);
-            normalizer = sum(weights);
-            weights = weights ./ normalizer;
             particles = resample(particles, weights, size(particles, 1));
         end
     end
@@ -290,54 +322,10 @@ for idx = 2:numel(tVec)
         path_idx = 1; % inicializo los puntos del path
         extra_visualizations = true; % (Dejar en false para version robot)
     end
-    
-    %----------------------------------------------------------------------
-    %         Actualizar visualizacion (Quitar en version para robot)
-    %----------------------------------------------------------------------
-    if(~use_roomba)
-        % Lidar Robot
-        viz(pose(:,idx),ranges)
-        waitfor(r);
-%         % Particulas
-%         figure(2)
-%         show(map)
-%         hold on
-%         scatter(particles(:, 1), particles(:, 2), '.', 'blue')
-%         if(extra_visualizations)
-%             % Path
-%             scatter(path(:, 1), path(:, 2), '.', 'black');
-%             % Target point
-%             if target_point_idx > length(target_points)
-%                 scatter(target_points(target_point_idx-1,1), ...
-%                 target_points(target_point_idx-1,2), 'p' , 'magenta');
-%             else % este if solo esta para mostrarlo en finish, es horrible :P
-%                 scatter(target_points(target_point_idx,1), ...
-%                 target_points(target_point_idx,2), 'p' , 'magenta');
-%             end
-%             % Posicion estimada segun particulas
-%             drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
-%         end
-    end
+   
 
     toc
 end
 
-%%
-% % Particulas
-% figure(2)
-% show(map)
-% hold on
-% scatter(particles(:, 1), particles(:, 2), '.', 'blue')
-% 
-% % Path
-% scatter(path(:, 1), path(:, 2), '.', 'black');
-% % Target point
-% if target_point_idx > length(target_points)
 % scatter(target_points(target_point_idx-1,1), ...
 % target_points(target_point_idx-1,2), 'p' , 'magenta');
-% else % este if solo esta para mostrarlo en finish, es horrible :P
-% scatter(target_points(target_point_idx,1), ...
-% target_points(target_point_idx,2), 'p' , 'magenta');
-% end
-% % Posicion estimada segun particulas
-% drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);

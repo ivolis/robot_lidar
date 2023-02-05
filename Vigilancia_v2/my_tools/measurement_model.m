@@ -11,7 +11,7 @@ function weights = measurement_model(ranges, x, map)
     weights = ones(size(x, 1),1);
     angles = linspace(-pi/2,pi/2,length(ranges));
     lidar_max_range = 5;
-    n_angles_to_see = 10; % c/particula vera 10 angulos distintos aleatorios del intervalo -pi/2 a pi/2
+    n_angles_to_see = 20; % c/particula vera n_a_t_see angulos distintos aleatorios del intervalo -pi/2 a pi/2
     
     if size(ranges, 1) == 0
         return
@@ -37,7 +37,7 @@ function weights = measurement_model(ranges, x, map)
             else
                 d_hat = sqrt( (intersection_points(j,1) - x(i,1)).^2 + (intersection_points(j,2) - x(i,2)).^2);
             end
- 
+            % en realidad no es .* en vez de +? pero queda MUY agresivo
             weights(i) = weights(i) + normpdf(0,d_hat-ranges_to_see(j),sigma);% bayes
         end
         eta = eta + weights(i); % eta + belief, digamos
