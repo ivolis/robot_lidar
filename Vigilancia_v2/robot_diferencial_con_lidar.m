@@ -146,7 +146,7 @@ new_cmd = false;
 target_point_idx = 1;
 extra_visualizations = false;
 rest_idx = 1;
-tic
+% tic
 
 for idx = 2:numel(tVec)
 %     tic
@@ -163,6 +163,9 @@ for idx = 2:numel(tVec)
         end
     end
     
+    %----------------------------------------------------------------------
+    %                  Genero los comandos a utilizar
+    %----------------------------------------------------------------------
     if(new_cmd)
         if(strcmp(sequence_state, sequence_state_motion))
             if(path_idx <= length(path))
@@ -175,16 +178,14 @@ for idx = 2:numel(tVec)
 %                 if(in_position | no_turn_direction) % faltan aceitar cosas
                 if(in_position)
                     path_idx = path_idx + 1;
-                    weights = measurement_model(ranges, particles, map);
-                    particles = resample(particles, weights, size(particles, 1));
+                    % voy a resamplear solo aprox 10 veces a lo largo del path
+                    if(~mod(path_idx,ceil(length(path)/10)))
+                        disp([path_idx length(path)])
+                        weights = measurement_model(ranges, particles, map);
+                        particles = resample(particles, weights, size(particles, 1));
+                    end
                 end
-                
-%                 % WIP
-%                 % measu model
-%                 n_eff = 1/sum(weights.^2);
-%                 if(n_eff < size(particles, 1)/2)
-%                     %resampleo
-%                 end
+
                 
             else
                 v_cmd = 0;
@@ -196,6 +197,9 @@ for idx = 2:numel(tVec)
         end
     end
     
+    %----------------------------------------------------------------------
+    %           Una vez que llegue a un punto o al final, paro
+    %----------------------------------------------------------------------
     if(strcmp(sequence_state, sequence_state_rest))
         if(target_point_idx <= length(target_points))
             v_cmd = 0;
@@ -293,8 +297,6 @@ for idx = 2:numel(tVec)
     %               Modelo de movimiento basado en velocidad
     %----------------------------------------------------------------------
     particles = motion_model([v_cmd w_cmd], particles, sampleTime);
-%     otro modelo que no me convence usar pero que hace nube de hip
-%     particles = motion_model([pose(:,idx-1), pose(:,idx)], particles); %
 
     %----------------------------------------------------------------------
     %     Modelo de medicion y resampleo respecto a la rutina wake up
@@ -323,9 +325,5 @@ for idx = 2:numel(tVec)
         extra_visualizations = true; % (Dejar en false para version robot)
     end
    
-
-    toc
+%     toc
 end
-
-% scatter(target_points(target_point_idx-1,1), ...
-% target_points(target_point_idx-1,2), 'p' , 'magenta');
