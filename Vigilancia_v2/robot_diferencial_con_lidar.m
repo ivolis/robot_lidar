@@ -122,14 +122,13 @@ inflate(inflated_map,0.23);
 %#########################################################################
 sequence_state_motion = 'motion';
 euclidean_distance_threshold = 0.1;
-angle_diff_threshold = pi/16;
+angle_diff_threshold = pi/24;
 
 %##########################################################################
 %                  SECUENCIA DE DESCANSO (REST)
 %#########################################################################
 sequence_state_rest = 'rest';
-% aprox 3 segundos parado (van a ser mas, cambiar maybe)
-rest_time_length = 3/sampleTime;
+rest_time_length = 3/sampleTime; % 3 segundos.. aprox
 
 
 %%
@@ -146,10 +145,9 @@ new_cmd = false;
 target_point_idx = 1;
 extra_visualizations = false;
 rest_idx = 1;
-% tic
+
 
 for idx = 2:numel(tVec)
-%     tic
     %% Completado:
     
     %----------------------------------------------------------------------
@@ -169,18 +167,15 @@ for idx = 2:numel(tVec)
     if(new_cmd)
         if(strcmp(sequence_state, sequence_state_motion))
             if(path_idx <= length(path))
-%                     [v_cmd, w_cmd, in_position, no_turn_direction] = ...
                     [v_cmd, w_cmd, in_position] = ...
                     get_cmd(possible_position(particles, weights), ...
                             path(path_idx,:), ...
                             v_max, w_max, ...
                             euclidean_distance_threshold, angle_diff_threshold);
-%                 if(in_position | no_turn_direction) % faltan aceitar cosas
                 if(in_position)
                     path_idx = path_idx + 1;
                     % voy a resamplear solo aprox 10 veces a lo largo del path
                     if(~mod(path_idx,ceil(length(path)/10)))
-                        disp([path_idx length(path)])
                         weights = measurement_model(ranges, particles, map);
                         particles = resample(particles, weights, size(particles, 1));
                     end
@@ -269,10 +264,12 @@ for idx = 2:numel(tVec)
     %----------------------------------------------------------------------
     %         Actualizar visualizacion (Quitar en version para robot)
     %----------------------------------------------------------------------
+  
     if(~use_roomba)
         % Lidar Robot
         viz(pose(:,idx),ranges)
-        waitfor(r);
+%         filename = sprintf('./plots/sim_vigilancia_%04d.png', idx);
+%         print(filename, '-dpng');
         % Particulas
         figure(2)
         show(map)
@@ -289,6 +286,8 @@ for idx = 2:numel(tVec)
             % Posicion estimada segun particulas
             drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
         end
+%         filename = sprintf('./plots/pf_vigilancia_%04d.png', idx);
+%         print(filename, '-dpng');
     end
     
     
@@ -324,6 +323,8 @@ for idx = 2:numel(tVec)
         path_idx = 1; % inicializo los puntos del path
         extra_visualizations = true; % (Dejar en false para version robot)
     end
-   
-%     toc
+ 
+    
+    waitfor(r);
+    
 end

@@ -9,7 +9,7 @@ function new_particles = motion_model(u, particles, deltaT)
     w = u(2);
     
     % Noise parameters
-    alpha = [0.13; 0.13; 0.13; 0.13; 0.06; 0.06];
+    alpha = [0.1; 0.1; 0.1; 0.1; 0.03; 0.03];
 
     sigma_v = alpha(1)*v^2 + alpha(2)*w^2;
     sigma_w = alpha(3)*v^2 + alpha(4)*w^2;
