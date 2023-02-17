@@ -1,6 +1,6 @@
 function heur = heuristic(cell, goal)
   
-  %%% YOUR CODE FOR CALCULATING THE REMAINING COST FROM A CELL TO THE GOAL GOES HERE
+  %%% CALCULATING THE REMAINING COST FROM A CELL TO THE GOAL
   
   h_multip = [0.5,1, 2, 5, 10];
   

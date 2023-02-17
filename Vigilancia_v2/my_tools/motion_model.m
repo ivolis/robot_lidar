@@ -15,8 +15,6 @@ function new_particles = motion_model(u, particles, deltaT)
     sigma_w = alpha(3)*v^2 + alpha(4)*w^2;
     sigma_gamma = alpha(5)*v^2 + alpha(6)*w^2;
 
-    % aca esta el tema, se le aplica el mismo ruido a todas las particulas
-    % vectorizar esto
     v_noise = v + normrnd(0,sigma_v, [length(particles) 1]);
     w_noise = w + normrnd(0,sigma_w, [length(particles) 1]); 
     gamma = normrnd(0,sigma_gamma, [length(particles) 1]); 

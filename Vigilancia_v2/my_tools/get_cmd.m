@@ -1,6 +1,3 @@
-% Falta aceitar cosas para hacer esto
-% function [v_cmd, w_cmd, in_position, no_turn_direction] = ...
-%             get_cmd(pose,path_point, v_max, w_max, distance_thr,angle_thr)
 function [v_cmd, w_cmd, in_position] = ...
             get_cmd(pose,path_point, v_max, w_max, distance_thr,angle_thr)
 
@@ -19,15 +16,12 @@ function [v_cmd, w_cmd, in_position] = ...
             if(w_cmd > w_max)
                 w_cmd = sign(angle_diff)*w_max;
             end
-%             no_turn_direction = false;
         else
             v_cmd = v_max;
             w_cmd = 0;
-%             no_turn_direction = true;
         end
     else
         in_position = true;
-%         no_turn_direction = false; % no puedo asegurarlo
         v_cmd = 0;
         w_cmd = 0;
     end

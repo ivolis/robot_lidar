@@ -236,8 +236,7 @@ for idx = 2:numel(tVec)
     % Mostrar y guardar el tiempo que tarda por cada iteracion
     toc
     
-    % pasaron 3 mins ya, terminar exploracion (por si acaso podria poner un
-    % poco menos por si tarda mas de lo que esperaba)
+    % pasaron 3 mins ya, terminar exploracion (en version robot ver bien esto)
     if(toc > simulationDuration) 
         break;
     end
@@ -247,9 +246,11 @@ end
 %%
 
 [scansSLAM,poses] = scansAndPoses(robot);
-occMap = buildMap(scansSLAM,poses,resolution,2);
+occMap = buildMap(scansSLAM,poses,resolution,lidar.maxRange);
 figure
 show(occMap)
 title('Mapa de Ocupación')
 xlabel('X [m]')
 ylabel('Y [m]')
+xlim([-1 3.3])
+ylim([-2.5 2.6])

@@ -8,7 +8,7 @@ function estim_pos_robot = possible_position(particles, weights)
     % initialize
     estim_pos_robot = zeros(1,3);
 
-    %% TODO: compute mean_pos    
+    %% compute mean_pos    
     
     % Se puede hacer el promedio ponderado de las particulas y sus pesos
     % para sacar la pose aproximada (en la media).
@@ -16,7 +16,7 @@ function estim_pos_robot = possible_position(particles, weights)
     
 
 
-% 
+%     queda medio raro visualmente tomar la mejor
 % 
 %     [max_weight, max_weight_idx] = max(weights);
 %     % mejor particula

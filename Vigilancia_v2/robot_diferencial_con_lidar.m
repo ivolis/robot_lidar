@@ -80,7 +80,7 @@ attachLidarSensor(viz,lidar);
 
 simulationDuration = 3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
-initPose = [3.2; 3.2; -pi/2];         % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
+initPose = [3.2; 3.2; -pi/2];       % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
@@ -105,10 +105,11 @@ particles = initialize_particles(n_particles,map);
 %##########################################################################
 %                  SECUENCIA DE LOCALIZACION INICIAL (WAKE UP)
 %##########################################################################
+sequence_state_wake_up = 'wakeup';
 wake_up_duration = 2*pi/w_max; % tiempo en dar una vuelta completa a w_max = 0.5
 tVec_Wake_up = 0:sampleTime:wake_up_duration;
 w_wake_up = -w_max*ones(size(tVec_Wake_up));
-sequence_state_wake_up = 'wakeup';
+
 
 %##########################################################################
 %                  SECUENCIA DE PLANEAMIENTO (PLANNING)
@@ -268,8 +269,6 @@ for idx = 2:numel(tVec)
     if(~use_roomba)
         % Lidar Robot
         viz(pose(:,idx),ranges)
-%         filename = sprintf('./plots/sim_vigilancia_%04d.png', idx);
-%         print(filename, '-dpng');
         % Particulas
         figure(2)
         show(map)
@@ -286,8 +285,6 @@ for idx = 2:numel(tVec)
             % Posicion estimada segun particulas
             drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
         end
-%         filename = sprintf('./plots/pf_vigilancia_%04d.png', idx);
-%         print(filename, '-dpng');
     end
     
     
