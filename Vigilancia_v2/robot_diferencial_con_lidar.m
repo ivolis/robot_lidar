@@ -46,13 +46,15 @@ v_max = 0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
 w_max = 0.5; % [rad/s] abs(), + giro antihorario - giro horario
 
 %% Creacion del entorno
-load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
+
+load 2022b_tp_map.mat     %carga el mapa como occupancyMap en la variable 'map'
+% load mapa_2022_1c.mat   %mapa 1c2022
 
 if verMatlab.Release=='(R2016b)'
     %Para versiones anteriores de MATLAB, puede ser necesario ajustar mapa
-    imagen_mapa = 1-double(imread('mapa_2022_1c.tiff'))/255;
+    imagen_mapa = 1-double(imread('2022b_tp_map.tiff'))/255;
     map = robotics.OccupancyGrid(imagen_mapa, 25);
-elseif verMatlab.Release=='(R2020a)'    % Completar con la version que tengan
+elseif verMatlab.Release(1:5)=='(R201'    % Completar con la version que tengan
     %Ni idea que pasa, ver si el truco R2016b funciona
     disp('ver si la compatibilidad R2016b funciona');
 else
@@ -80,7 +82,7 @@ attachLidarSensor(viz,lidar);
 
 simulationDuration = 3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
-initPose = [3.2; 3.2; -pi/2];       % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
+initPose = [8.5; 15; -pi/2];       % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
@@ -92,8 +94,7 @@ pose(:,1) = initPose;
 %% Simulacion
 
 % Para vigilancia 
-target_points = [1.5, 1.3;
-                 4.3, 2.1];
+target_points = [5.3, 4.3]; % LAR
 
 %##########################################################################
 %                       INICIALIZACION DE PARTICULAS
@@ -301,7 +302,7 @@ for idx = 2:numel(tVec)
     % modelo de medicion y voy bajando la cantidad para alivianar computo
     if(strcmp(sequence_state, sequence_state_wake_up))
         weights = measurement_model(ranges, particles, map);
-        if(size(particles, 1) ~= n_particles_final)
+        if(size(particles, 1) ~= n_particles_final) % ES MUY SEGUIDO ESTO
             particles = resample(particles, weights, size(particles, 1)/2);
         else
             particles = resample(particles, weights, size(particles, 1));
@@ -325,3 +326,21 @@ for idx = 2:numel(tVec)
     waitfor(r);
     
 end
+
+
+%%
+%         figure(2)
+%         show(map)
+%         hold on
+%         scatter(particles(:, 1), particles(:, 2), '.', 'blue')
+%         if(extra_visualizations)
+%             % Path
+%             scatter(path(:, 1), path(:, 2), '.', 'black');
+%             % Target point
+%             if target_point_idx  <= length(target_points)
+%                 scatter(target_points(target_point_idx,1), ...
+%                 target_points(target_point_idx,2), 'p' , 'magenta');
+%             end
+%             % Posicion estimada segun particulas
+%             drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
+%         end

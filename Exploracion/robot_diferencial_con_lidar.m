@@ -45,13 +45,15 @@ v_max = 0.15; % [m/s] abs(), el - significa ir hacia atras linealmente
 w_max = 0.5; % [rad/s] abs(), + giro antihorario - giro horario
 
 %% Creacion del entorno
-load mapa_2022_1c.mat     %carga el mapa como occupancyMap en la variable 'map'
+
+load 2022b_tp_map.mat     %carga el mapa como occupancyMap en la variable 'map'
+% load mapa_2022_1c.mat   %mapa 1c2022
 
 if verMatlab.Release=='(R2016b)'
     %Para versiones anteriores de MATLAB, puede ser necesario ajustar mapa
-    imagen_mapa = 1-double(imread('mapa_2022_1c.tiff'))/255;
+    imagen_mapa = 1-double(imread('2022b_tp_map.tiff'))/255;
     map = robotics.OccupancyGrid(imagen_mapa, 25);
-elseif verMatlab.Release=='(R2020a)'    % Completar con la version que tengan
+elseif verMatlab.Release(1:5)=='(R201'    % Completar con la version que tengan
     %Ni idea que pasa, ver si el truco R2016b funciona
     disp('ver si la compatibilidad R2016b funciona');
 else

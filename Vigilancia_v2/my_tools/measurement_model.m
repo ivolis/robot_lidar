@@ -27,8 +27,11 @@ function weights = measurement_model(ranges, x, map)
 
         for j = 1:length(angles_to_see) % para cada medicion
             
-            if(isnan(ranges_to_see(j)) || ranges_to_see(j)< 0.20)
-                % La consigna dice que si es NaN o <20 cm, es erronea
+            if(isnan(ranges_to_see(j)))
+                ranges_to_see(j) = 5; % si vale NaN posiblement esea dist maxima de lidar
+            end
+            
+            if(ranges_to_see(j)< 0.20) % medicion menor a 20cm es erronea
                 continue;
             end
             
