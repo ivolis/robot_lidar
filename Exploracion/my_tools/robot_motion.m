@@ -3,15 +3,18 @@ function [v_cmd, w_cmd, robot_trapped]= robot_motion(lidar_ranges, lidar_angles,
     robot_trapped = false;
 
     max_collision_distance = 0.35*1.5;
-   
+    
+    % el 0.11 es una pequeña "incertidumbre"
+    alpha = wrapToPi(asin((0.35/2)/(max_collision_distance))) + 0.11;
+    
     % las mediciones por debajo de 20cm considero que no sirve
     idx_collisions = find( lidar_ranges > 0.2 & lidar_ranges < max_collision_distance);
     collision_angles = lidar_angles(idx_collisions);
     
     % ~any == isempty() pero mas rapido
-    F = ~any(find(collision_angles < pi/4 & collision_angles > -pi/4));
-    L = ~any(find(collision_angles > pi/4 & collision_angles < pi/2));
-    R = ~any(find(collision_angles < -pi/4 & collision_angles > -pi/2));
+    F = ~any(find(collision_angles < alpha & collision_angles > -alpha));
+    L = ~any(find(collision_angles > alpha & collision_angles < pi/2));
+    R = ~any(find(collision_angles < -alpha & collision_angles > -pi/2));
     % F -> forward
     % L -> left       que sean true es que esa direccion esta "libre"
     % R -> right
