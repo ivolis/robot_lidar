@@ -82,7 +82,7 @@ attachLidarSensor(viz,lidar);
 
 simulationDuration = 3*60;          % Duracion total [s]
 sampleTime = 0.1;                   % Sample time [s]
-initPose = [8.5; 15; -pi/2];       % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
+initPose = [9; 15; -pi/2];       % Pose inicial (x y theta) del robot simulado (el robot pude arrancar en cualquier lugar valido del mapa)
 
 % Inicializar vectores de tiempo, entrada y pose
 tVec = 0:sampleTime:simulationDuration;         % Vector de Tiempo para duracion total
@@ -99,8 +99,8 @@ target_points = [5.3, 4.3]; % LAR
 %##########################################################################
 %                       INICIALIZACION DE PARTICULAS
 %##########################################################################
-n_particles = 2^12;
-n_particles_final = n_particles/(2^4);
+n_particles = 2^14;%2^12;
+n_particles_final = 2^9;
 particles = initialize_particles(n_particles,map);
 
 %##########################################################################
@@ -286,6 +286,7 @@ for idx = 2:numel(tVec)
             % Posicion estimada segun particulas
             drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
         end
+        hold off
     end
     
     
@@ -302,7 +303,7 @@ for idx = 2:numel(tVec)
     % modelo de medicion y voy bajando la cantidad para alivianar computo
     if(strcmp(sequence_state, sequence_state_wake_up))
         weights = measurement_model(ranges, particles, map);
-        if(size(particles, 1) ~= n_particles_final) % ES MUY SEGUIDO ESTO
+        if(size(particles, 1) ~= n_particles_final)
             particles = resample(particles, weights, size(particles, 1)/2);
         else
             particles = resample(particles, weights, size(particles, 1));
@@ -329,18 +330,18 @@ end
 
 
 %%
-%         figure(2)
-%         show(map)
-%         hold on
-%         scatter(particles(:, 1), particles(:, 2), '.', 'blue')
-%         if(extra_visualizations)
-%             % Path
-%             scatter(path(:, 1), path(:, 2), '.', 'black');
-%             % Target point
-%             if target_point_idx  <= length(target_points)
-%                 scatter(target_points(target_point_idx,1), ...
-%                 target_points(target_point_idx,2), 'p' , 'magenta');
-%             end
-%             % Posicion estimada segun particulas
-%             drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
-%         end
+% figure(2)
+% show(map)
+% hold on
+% scatter(particles(:, 1), particles(:, 2), '.', 'blue')
+% if(extra_visualizations)
+%     % Path
+%     scatter(path(:, 1), path(:, 2), '.', 'black');
+%     % Target point
+%     if target_point_idx  <= length(target_points)
+%         scatter(target_points(target_point_idx,1), ...
+%         target_points(target_point_idx,2), 'p' , 'magenta');
+%     end
+%     % Posicion estimada segun particulas
+%     drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
+% end
