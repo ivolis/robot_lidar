@@ -330,20 +330,20 @@ end
 
 
 %%
-% figure(3)
-% show(map)
-% hold on
-% scatter(particles(:, 1), particles(:, 2), '.', 'blue')
-% if(extra_visualizations)
-%     % Path
-%     scatter(path(:, 1), path(:, 2), '.', 'black');
-%     % Target point
-%     if target_point_idx  <= length(target_points)
-%         scatter(target_points(target_point_idx,1), ...
-%         target_points(target_point_idx,2), 'p' , 'magenta');
-%     end
-%     % Posicion estimada segun particulas
-%     drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
-%     scatter(pose(1, :), pose(2, :), '.', 'blue');
-% end
-% hold off
+figure(3)
+show(map)
+hold on
+scatter(particles(:, 1), particles(:, 2), '.', 'blue')
+if(extra_visualizations)
+    % Path
+    scatter(path(:, 1), path(:, 2), '.', 'black');
+    % Target point
+    if target_point_idx  <= length(target_points)
+        scatter(target_points(target_point_idx,1), ...
+        target_points(target_point_idx,2), 'p' , 'magenta');
+    end
+    % Posicion estimada segun particulas
+    drawrobot(possible_position(particles, weights), 'r', 2, 0.35, 0.35);
+    scatter(pose(:, 1), pose(:, 2), '.', 'black');
+end
+hold off
