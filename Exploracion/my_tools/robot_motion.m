@@ -1,5 +1,8 @@
 function [v_cmd, w_cmd, robot_trapped]= robot_motion(lidar_ranges, lidar_angles, w_max, v_max, priority_rotation)
 
+    % El simulador tira NaN si no choca con nada (si el ruido esta off)
+    lidar_ranges(isnan(lidar_ranges)) = 5;
+
     robot_trapped = false;
 
     max_collision_distance = 0.35*1.5;
@@ -18,6 +21,9 @@ function [v_cmd, w_cmd, robot_trapped]= robot_motion(lidar_ranges, lidar_angles,
     % F -> forward
     % L -> left       que sean true es que esa direccion esta "libre"
     % R -> right
+    
+    
+    
     
     if F % F (priorizo ir hacia adelante principalmente)
         v_cmd = v_max;

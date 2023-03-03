@@ -13,7 +13,7 @@ clc
 
 verMatlab= ver('MATLAB');   % en MATLAB2020a funciona bien, ajustado para R2016b, los demas a pelearla...
 
-simular_ruido_lidar = true;%false; %simula datos no validos del lidar real, probar si se la banca
+simular_ruido_lidar = false; %simula datos no validos del lidar real, probar si se la banca
 use_roomba=false;  % false para desarrollar usando el simulador, true para conectarse al robot real
 
 addpath('my_tools'); % cualquier funcion extra que haya hecho yo
@@ -60,6 +60,12 @@ else
     disp(['Utilizando MATLAB ', verMatlab.Release]);
 end
 
+% CAMBIO LOS 0.5 DEL MAPA AL MAXIMO
+% (https://github.com/ivolis/robot_lidar/issues/18)
+map_occupancy = getOccupancy(map);
+map_occupancy(map_occupancy > map.ProbabilitySaturation(1)) = map.ProbabilitySaturation(2);
+setOccupancy(map,[0 0],map_occupancy)
+
 %% Crear sensor lidar en simulador
 lidar = LidarSensor;
 lidar.sensorOffset = [0,0];   % Posicion del sensor en el robot (asumiendo mundo 2D)
@@ -100,8 +106,8 @@ end
 %% LidarSLAM
 resolution = map.Resolution;
 robot = lidarSLAM(resolution, lidar.maxRange);
-robot.LoopClosureThreshold = 120; % se setea empiricamente
-robot.LoopClosureSearchRadius = 1; % se setea empiricamente
+robot.LoopClosureThreshold = 150; % se setea empiricamente
+robot.LoopClosureSearchRadius = 8; % se setea empiricamente
 
 %% Inicializaciones
 
@@ -206,6 +212,7 @@ for idx = 2:numel(tVec)
     %----------------------------------------------------------------------
     %             Uso de informacion y prioridad de rotaciones
     %----------------------------------------------------------------------
+
     
     % Cambio la prioridad de rotacion cada tanto para evitar atascarme en
     % cualquier lugar, esto le da mas libertad al robot
